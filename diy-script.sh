@@ -125,11 +125,6 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-update_feeds() {
-    sed -i '/^#/d' $BUILD_DIR/$FEEDS_CONF
-    if ! grep -q "small-package" $BUILD_DIR/$FEEDS_CONF; then
-        echo "src-git small8 https://github.com/kenzok8/small-package" >> $BUILD_DIR/$FEEDS_CONF
-    fi
+   src-git small8 https://github.com/kenzok8/small-package
     ./scripts/feeds clean
     ./scripts/feeds update -a
-}
