@@ -47,8 +47,6 @@ git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2 package/luci-app-passwall2
 git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
 git clone --depth=1 https://github.com/morytyann/OpenWrt-mihomo package/luci-app-mihomo
-git clone --depth=1 https://github.com/morytyann/OpenWrt-mihomo package/luci-app-mihomo
-
 
 # Themes
 git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
@@ -125,6 +123,12 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-   src-git small8 https://github.com/kenzok8/small-package
-    ./scripts/feeds clean
-    ./scripts/feeds update -a
+# Alist & AdGuardHome & 集客无线AC控制器 & Lucky & AriaNg
+#git clone https://github.com/sbwml/luci-app-alist package/luci-app-alist
+git_sparse_clone main https://github.com/kenzok8/small-package luci-app-adguardhome
+# git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
+# git clone https://github.com/sirpdboy/luci-app-lucky package/lucky
+#git clone https://github.com/laipeng668/AriaNg package/ariang
+
+./scripts/feeds update -a
+./scripts/feeds install -a
