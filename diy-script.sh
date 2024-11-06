@@ -30,23 +30,33 @@ function git_sparse_clone() {
 }
 
 # 添加额外插件
-#git clone --depth=1 https://github.com/kongfl888/luci-app-adguardhome package/luci-app-adguardhome
-#git clone --depth=1 -b openwrt-18.06 https://github.com/tty228/luci-app-wechatpush package/luci-app-serverchan
-#git clone --depth=1 https://github.com/ilxp/luci-app-ikoolproxy package/luci-app-ikoolproxy
-#git clone --depth=1 https://github.com/esirplayground/luci-app-poweroff package/luci-app-poweroff
-#git clone --depth=1 https://github.com/destan19/OpenAppFilter package/OpenAppFilter
-#git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-app-netdata
-#git_sparse_clone main https://github.com/Lienol/openwrt-package luci-app-filebrowser luci-app-ssr-mudb-server
-#git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/luci-app-eqos
+git clone --depth=1 https://github.com/kongfl888/luci-app-adguardhome package/luci-app-adguardhome
+git clone --depth=1 -b openwrt-18.06 https://github.com/tty228/luci-app-wechatpush package/luci-app-serverchan
+git clone --depth=1 https://github.com/ilxp/luci-app-ikoolproxy package/luci-app-ikoolproxy
+git clone --depth=1 https://github.com/esirplayground/luci-app-poweroff package/luci-app-poweroff
+git clone --depth=1 https://github.com/destan19/OpenAppFilter package/OpenAppFilter
+git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-app-netdata
+git_sparse_clone main https://github.com/Lienol/openwrt-package luci-app-filebrowser luci-app-ssr-mudb-server
+git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/luci-app-eqos
 # git_sparse_clone master https://github.com/syb999/openwrt-19.07.1 package/network/services/msd_lite
+
+git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/luci-app-daed
+git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
+git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
+
 
 # 科学上网插件
 #git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/openwrt-passwall
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/luci-app-passwall
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2 package/luci-app-passwall2
+git clone --depth=1 --single-branch --branch dev https://github.com/vernesong/OpenClash package/OpenClash
+git clone --depth=1 --single-branch --branch master https://github.com/bulianglin/homeproxy package/homeproxy
+git clone --depth=1 --single-branch --branch main https://github.com/morytyann/OpenWrt-mihomo package/OpenWrt-mihomo
+git clone --depth=1 --single-branch --branch main https://github.com/Thaolga/luci-app-nekoclash package/luci-app-nekoclash
+git clone --depth=1 --single-branch --branch main https://github.com/xiaorouji/openwrt-passwall package/openwrt-passwall
+git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
-#git clone --depth=1 https://github.com/morytyann/OpenWrt-mihomo package/luci-app-mihomo
 
 # Themes
 git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
@@ -125,12 +135,9 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 
 # Alist & AdGuardHome & 集客无线AC控制器 & Lucky & AriaNg
 #git clone https://github.com/sbwml/luci-app-alist package/luci-app-alist
-git_sparse_clone main https://github.com/kenzok8/small-package luci-app-adguardhome
-# git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
-git clone https://github.com/sirpdboy/luci-app-lucky package/lucky
+git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
 #git clone https://github.com/laipeng668/AriaNg package/ariang
 
-sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
-git pull
+#sed -i '$a src-git smpackage https://github.com/kenzok8/small-package' feeds.conf.default
 ./scripts/feeds update -a
 ./scripts/feeds install -a
