@@ -53,9 +53,10 @@ git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 git clone --depth=1 --single-branch --branch dev https://github.com/vernesong/OpenClash package/OpenClash
 git clone --depth=1 --single-branch --branch master https://github.com/bulianglin/homeproxy package/homeproxy
 git clone --depth=1 --single-branch --branch main https://github.com/morytyann/OpenWrt-mihomo package/OpenWrt-mihomo
-git clone --depth=1 --single-branch --branch main https://github.com/Thaolga/luci-app-nekoclash package/luci-app-nekoclash
+git clone --depth=1 --single-branch --branch main https://github.com/morytyann/OpenWrt-mihomo package/luci-app-mihomo
+#git clone --depth=1 --single-branch --branch main https://github.com/Thaolga/luci-app-nekoclash package/luci-app-nekoclash
 git clone --depth=1 --single-branch --branch main https://github.com/xiaorouji/openwrt-passwall package/openwrt-passwall
-git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
+#git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
 
 
