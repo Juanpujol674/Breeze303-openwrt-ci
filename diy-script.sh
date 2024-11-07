@@ -39,10 +39,10 @@ git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-a
 git_sparse_clone main https://github.com/Lienol/openwrt-package luci-app-filebrowser luci-app-ssr-mudb-server
 git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/luci-app-eqos
 # git_sparse_clone master https://github.com/syb999/openwrt-19.07.1 package/network/services/msd_lite
-
 git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/luci-app-daed
 git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
-git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
+#git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
+
 
 
 # 科学上网插件
@@ -58,12 +58,13 @@ git clone --depth=1 --single-branch --branch main https://github.com/xiaorouji/o
 git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
 
+
 # Themes
 git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
 git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
 git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
 git clone --depth=1 https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
-git_sparse_clone main https://github.com/kongfl888/luci-app-adguardhome package/luci-app-adguardhome
+git_sparse_clone main https://github.com/haiibo/packages luci-theme-atmaterial luci-theme-opentomcat luci-theme-netgear
 
 # 更改 Argon 主题背景
 cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
@@ -86,21 +87,21 @@ git clone --depth=1 https://github.com/ximiTech/msd_lite package/msd_lite
 git clone --depth=1 https://github.com/sbwml/luci-app-mosdns package/luci-app-mosdns
 
 # Alist
-#git clone --depth=1 https://github.com/sbwml/luci-app-alist package/luci-app-alist
+git clone --depth=1 https://github.com/sbwml/luci-app-alist package/luci-app-alist
 
 # DDNS.to
-#git_sparse_clone main https://github.com/linkease/nas-packages-luci luci/luci-app-ddnsto
-#git_sparse_clone master https://github.com/linkease/nas-packages network/services/ddnsto
+git_sparse_clone main https://github.com/linkease/nas-packages-luci luci/luci-app-ddnsto
+git_sparse_clone master https://github.com/linkease/nas-packages network/services/ddnsto
 
 # iStore
-#git_sparse_clone main https://github.com/linkease/istore-ui app-store-ui
-#git_sparse_clone main https://github.com/linkease/istore luci
+git_sparse_clone main https://github.com/linkease/istore-ui app-store-ui
+git_sparse_clone main https://github.com/linkease/istore luci
 
 # 在线用户
-#git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner
-#sed -i '$i uci set nlbwmon.@nlbwmon[0].refresh_interval=2s' package/lean/default-settings/files/zzz-default-settings
-#sed -i '$i uci commit nlbwmon' package/lean/default-settings/files/zzz-default-settings
-#chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
+git_sparse_clone main https://github.com/haiibo/packages luci-app-onliner
+sed -i '$i uci set nlbwmon.@nlbwmon[0].refresh_interval=2s' package/lean/default-settings/files/zzz-default-settings
+sed -i '$i uci commit nlbwmon' package/lean/default-settings/files/zzz-default-settings
+chmod 755 package/luci-app-onliner/root/usr/share/onliner/setnlbw.sh
 
 # x86 型号只显示 CPU 型号
 sed -i 's/${g}.*/${a}${b}${c}${d}${e}${f}${hydrid}/g' package/lean/autocore/files/x86/autocore
@@ -133,45 +134,6 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-# Alist & AdGuardHome & 集客无线AC控制器 & Lucky & AriaNg
-#git clone https://github.com/sbwml/luci-app-alist package/luci-app-alist
-git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac
-#git clone https://github.com/laipeng668/AriaNg package/ariang
-
-clone_repo() {
-    if [[ ! -d $BUILD_DIR ]]; then
-        echo $REPO_URL $REPO_BRANCH
-        git clone --depth 1 -b $REPO_BRANCH $REPO_URL $BUILD_DIR
-    fi
-}
-
-clean_up() {
-    cd $BUILD_DIR
-    if [[ -f $BUILD_DIR/.config ]]; then
-        \rm -f $BUILD_DIR/.config
-    fi
-    if [[ -d $BUILD_DIR/tmp ]]; then
-        \rm -rf $BUILD_DIR/tmp
-    fi
-    if [[ -d $BUILD_DIR/logs ]]; then
-        \rm -rf $BUILD_DIR/logs/*
-    fi
-}
-
-reset_feeds_conf() {
-    git checkout origin/$REPO_BRANCH
-    git reset --hard origin/$REPO_BRANCH
-    git clean -f -d
-    git pull origin $REPO_BRANCH
-    if [[ $COMMIT_HASH != "none" ]]; then
-        git checkout $COMMIT_HASH
-    fi
-    #if git status | grep -qE "$FEEDS_CONF$"; then
-    #    git reset HEAD $FEEDS_CONF
-    #    git checkout $FEEDS_CONF
-    #fi
-}
-
 update_feeds() {
     sed -i '/^#/d' $BUILD_DIR/$FEEDS_CONF
     if ! grep -q "small-package" $BUILD_DIR/$FEEDS_CONF; then
@@ -179,70 +141,4 @@ update_feeds() {
     fi
     ./scripts/feeds clean
     ./scripts/feeds update -a
-}
-
-remove_unwanted_packages() {
-    local luci_packages=(
-        "luci-app-passwall" "luci-app-smartdns" "luci-app-ddns-go" "luci-app-rclone"
-        "luci-app-ssr-plus" "luci-app-vssr" "luci-theme-argon" "luci-app-daed" "luci-app-dae"
-        "luci-app-alist" "luci-app-argon-config" "luci-app-homeproxy" "luci-app-haproxy-tcp"
-        "luci-app-openclash"
-    )
-    local packages_net=(
-        "haproxy" "xray-core" "xray-plugin" "dns2tcp" "dns2socks" "alist" "hysteria"
-        "smartdns" "mosdns" "adguardhome" "ddns-go" "naiveproxy" "shadowsocks-rust"
-        "sing-box" "v2ray-core" "v2ray-geodata" "v2ray-plugin" "tuic-client"
-        "chinadns-ng" "ipt2socks" "tcping" "trojan-plus" "simple-obfs"
-        "shadowsocksr-libev" "dae" "daed"
-    )
-    local small8_packages=(
-        "ppp" "firewall" "dae" "daed" "daed-next" "libnftnl" "nftables" "dnsmasq"
-    )
-
-    for pkg in "${luci_packages[@]}"; do
-        \rm -rf ./feeds/luci/applications/$pkg
-        \rm -rf ./feeds/luci/themes/$pkg
-    done
-
-    for pkg in "${packages_net[@]}"; do
-        \rm -rf ./feeds/packages/net/$pkg
-    done
-
-    for pkg in "${small8_packages[@]}"; do
-        \rm -rf ./feeds/small8/$pkg
-    done
-
-    if [[ -d ./package/istore ]]; then
-        \rm -rf ./package/istore
-    fi
-}
-
-update_golang() {
-    if [[ -d ./feeds/packages/lang/golang ]]; then
-        \rm -rf ./feeds/packages/lang/golang
-        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
-    fi
-}
-
-install_small8() {
-    ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria naiveproxy \
-        shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-plugin tuic-client chinadns-ng ipt2socks tcping \
-        trojan-plus simple-obfs shadowsocksr-libev luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns \
-        v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm \
-        luci-lib-taskd luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash luci-app-mihomo 
-}
-
-install_feeds() {
-    ./scripts/feeds update -i
-    for dir in $BUILD_DIR/feeds/*; do
-        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
-        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
-            if [[ $(basename "$dir") == "small8" ]]; then
-                install_small8
-            else
-                ./scripts/feeds install -f -ap $(basename "$dir")
-            fi
-        fi
-    done
 }
