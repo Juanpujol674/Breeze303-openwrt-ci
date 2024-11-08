@@ -42,7 +42,6 @@ git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/
 #git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/luci-app-daed
 git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 #git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
-git clone --depth=1 --single-branch --branch main https://github.com/animegasan/luci-app-quickstart package/luci-app-quickstart
 git clone --depth=1 --single-branch --branch main hhttps://github.com/maxlicheng/luci-app-unblockmusic package/luci-app-unblockmusic
 
 # 科学上网插件
