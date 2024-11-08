@@ -39,11 +39,11 @@ git clone --depth=1 https://github.com/Jason6111/luci-app-netdata package/luci-a
 git_sparse_clone main https://github.com/Lienol/openwrt-package luci-app-filebrowser luci-app-ssr-mudb-server
 git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/luci-app-eqos
 # git_sparse_clone master https://github.com/syb999/openwrt-19.07.1 package/network/services/msd_lite
-git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/luci-app-daed
+#git clone --depth 1 https://github.com/QiuSimons/luci-app-daed package/luci-app-daed
 git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 #git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
-
-
+git clone --depth=1 --single-branch --branch main https://github.com/animegasan/luci-app-quickstart package/luci-app-quickstart
+git clone --depth=1 --single-branch --branch main hhttps://github.com/maxlicheng/luci-app-unblockmusic package/luci-app-unblockmusic
 
 # 科学上网插件
 #git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
@@ -58,7 +58,7 @@ git clone --depth=1 --single-branch --branch main https://github.com/morytyann/O
 git clone --depth=1 --single-branch --branch main https://github.com/xiaorouji/openwrt-passwall package/openwrt-passwall
 #git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
-git clone --depth=1 --single-branch --branch main https://github.com/animegasan/luci-app-quickstart package/luci-app-quickstart
+
 
 # Themes
 git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
