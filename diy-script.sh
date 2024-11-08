@@ -58,7 +58,7 @@ git clone --depth=1 --single-branch --branch main https://github.com/morytyann/O
 git clone --depth=1 --single-branch --branch main https://github.com/xiaorouji/openwrt-passwall package/openwrt-passwall
 #git clone --depth=1 --single-branch --branch master https://github.com/fw876/helloworld package/helloworld
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
-
+git clone --depth=1 --single-branch --branch main https://github.com/animegasan/luci-app-quickstart package/luci-app-quickstart
 
 # Themes
 git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
