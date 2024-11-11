@@ -135,5 +135,114 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-./scripts/feeds update -a
-./scripts/feeds install -a
+clean_up() {
+    cd $BUILD_DIR
+    if [[ -f $BUILD_DIR/.config ]]; then
+        \rm -f $BUILD_DIR/.config
+    fi
+    if [[ -d $BUILD_DIR/tmp ]]; then
+        \rm -rf $BUILD_DIR/tmp
+    fi
+    if [[ -d $BUILD_DIR/logs ]]; then
+        \rm -rf $BUILD_DIR/logs/*
+    fi
+}
+
+reset_feeds_conf() {
+    git checkout origin/$REPO_BRANCH
+    git reset --hard origin/$REPO_BRANCH
+    git clean -f -d
+    git pull origin $REPO_BRANCH
+    if [[ $COMMIT_HASH != "none" ]]; then
+        git checkout $COMMIT_HASH
+    fi
+    #if git status | grep -qE "$FEEDS_CONF$"; then
+    #    git reset HEAD $FEEDS_CONF
+    #    git checkout $FEEDS_CONF
+    #fi
+}
+
+update_feeds() {
+    sed -i '/^#/d' $BUILD_DIR/$FEEDS_CONF
+    if ! grep -q "small-package" $BUILD_DIR/$FEEDS_CONF; then
+        echo "src-git small8 https://github.com/kenzok8/small-package" >> $BUILD_DIR/$FEEDS_CONF
+    fi
+    ./scripts/feeds clean
+    ./scripts/feeds update -a
+}
+
+remove_unwanted_packages() {
+    local luci_packages=(
+        "luci-app-passwall" "luci-app-smartdns" "luci-app-ddns-go" "luci-app-rclone"
+        "luci-app-ssr-plus" "luci-app-vssr" "luci-theme-argon" "luci-app-daed" "luci-app-dae"
+        "luci-app-alist" "luci-app-argon-config" "luci-app-homeproxy" "luci-app-haproxy-tcp"
+        "luci-app-openclash"
+    )
+    local packages_net=(
+        "haproxy" "xray-core" "xray-plugin" "dns2tcp" "dns2socks" "alist" "hysteria"
+        "smartdns" "mosdns" "adguardhome" "ddns-go" "naiveproxy" "shadowsocks-rust"
+        "sing-box" "v2ray-core" "v2ray-geodata" "v2ray-plugin" "tuic-client"
+        "chinadns-ng" "ipt2socks" "tcping" "trojan-plus" "simple-obfs"
+        "shadowsocksr-libev" "dae" "daed"
+    )
+    local small8_packages=(
+        "ppp" "firewall" "dae" "daed" "daed-next" "libnftnl" "nftables" "dnsmasq"
+    )
+
+    for pkg in "${luci_packages[@]}"; do
+        \rm -rf ./feeds/luci/applications/$pkg
+        \rm -rf ./feeds/luci/themes/$pkg
+    done
+
+    for pkg in "${packages_net[@]}"; do
+        \rm -rf ./feeds/packages/net/$pkg
+    done
+
+    for pkg in "${small8_packages[@]}"; do
+        \rm -rf ./feeds/small8/$pkg
+    done
+
+    if [[ -d ./package/istore ]]; then
+        \rm -rf ./package/istore
+    fi
+}
+
+update_golang() {
+    if [[ -d ./feeds/packages/lang/golang ]]; then
+        \rm -rf ./feeds/packages/lang/golang
+        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+    fi
+}
+
+install_small8() {
+    ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria naiveproxy \
+        shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-plugin tuic-client chinadns-ng ipt2socks tcping \
+        trojan-plus simple-obfs shadowsocksr-libev luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns \
+        v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm \
+        luci-lib-taskd luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash
+}
+
+install_feeds() {
+    ./scripts/feeds update -i
+    for dir in $BUILD_DIR/feeds/*; do
+        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
+        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
+            if [[ $(basename "$dir") == "small8" ]]; then
+                install_small8
+            else
+                ./scripts/feeds install -f -ap $(basename "$dir")
+            fi
+        fi
+    done
+}
+fix_default_set() {
+    #修改默认主题
+    sed -i "s/luci-theme-bootstrap/luci-theme-$THEME_SET/g" $(find ./feeds/luci/collections/ -type f -name "Makefile")
+
+    if [[ -f ./package/emortal/autocore/files/tempinfo ]]; then
+        if [[ -f $BASE_PATH/patches/tempinfo ]]; then
+            \cp -f $BASE_PATH/patches/tempinfo ./package/emortal/autocore/files/tempinfo
+        fi
+    fi
+}
