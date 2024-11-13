@@ -2,8 +2,8 @@ name: IPQ60XX-NOWIFI
 
 on:
   workflow_dispatch:
- # schedule:
- # - cron: 0 19 * * *
+  schedule:
+    - cron: 0 19 * * *
 
 env:
   REPO_URL: https://github.com/LiBwrt-op/openwrt-6.x.git
@@ -154,7 +154,8 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
-        name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+        name: tag_name: ${{env.WRT_TARGET}}_${{env.WRT_VER}}_${{env.WRT_DATE}}
+        files: ./wrt/upload/*.*
         allowUpdates: true
         tag: ${{ env.FIRMWARE_TAG }}
         token: ${{ secrets.GITHUB_TOKEN }}
