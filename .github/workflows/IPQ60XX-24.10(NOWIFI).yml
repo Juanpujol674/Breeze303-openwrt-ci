@@ -1,5 +1,5 @@
 name: IPQ60XX-24.10(NOWIFI)
-
+on:
   workflow_dispatch:
   schedule:
     - cron: 0 19 * * *
