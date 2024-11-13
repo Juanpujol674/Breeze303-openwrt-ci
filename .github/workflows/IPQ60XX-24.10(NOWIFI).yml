@@ -154,11 +154,13 @@ jobs:
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
       uses: ncipollo/release-action@v1
       with:
-        name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-        allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        tag_name: ${{env.WRT_TARGET}}_${{env.WRT_VER}}_${{env.WRT_DATE}}
+        files: ./wrt/upload/*.*
+        #name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+        #allowUpdates: true
+        #tag: ${{ env.FIRMWARE_TAG }}
+        #token: ${{ secrets.GITHUB_TOKEN }}
+        #artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 版本24.10固件(NOWIFI)
