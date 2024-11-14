@@ -16,7 +16,17 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: IPQ60XX-24.10
   TZ: Asia/Shanghai
-  WRT_TARGET: ${{inputs.WRT_TARGET}} 
+  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  WRT_TARGET: ${{inputs.WRT_TARGET}}
+  WRT_THEME: ${{inputs.WRT_THEME}}
+  WRT_NAME: ${{inputs.WRT_NAME}}
+  WRT_WIFI: ${{inputs.WRT_WIFI}}
+  WRT_IP: ${{inputs.WRT_IP}}
+  WRT_PW: ${{inputs.WRT_PW}}
+  WRT_REPO: ${{inputs.WRT_REPO}}
+  WRT_BRANCH: ${{inputs.WRT_BRANCH}}
+  WRT_PACKAGE: ${{inputs.WRT_PACKAGE}}
+  WRT_TEST: ${{inputs.WRT_TEST}}
   
 jobs:
   Build:
