@@ -16,8 +16,6 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: IPQ60XX-24.10(NOWIFI)
   TZ: Asia/Shanghai
-  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-
 
 jobs:
   Build:
