@@ -44,7 +44,7 @@ git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 #git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
 git clone --depth=1 --single-branch --branch js https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic package/luci-app-unblockneteasemusic
 git clone --depth=1 --single-branch --branch main https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac package/luci-app-gecoosac
-git clone --depth=1 --single-branch --branch main https://github.com/asvow/luci-app-tailscale package/luci-app-tailscale package/luci-app-tailscale
+git clone --depth=1 --single-branch --branch main https://github.com/asvow/luci-app-tailscale package/luci-app-tailscale
 # 科学上网插件
 #git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/openwrt-passwall
