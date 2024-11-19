@@ -221,7 +221,7 @@ install_small8() {
         trojan-plus simple-obfs shadowsocksr-libev luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns \
         v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm \
         luci-lib-taskd luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash openwrt-gecoosac luci-app-gecoosac \
 }
 
 install_feeds() {
