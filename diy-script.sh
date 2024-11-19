@@ -43,8 +43,10 @@ git_sparse_clone openwrt-18.06 https://github.com/immortalwrt/luci applications/
 git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 #git clone --depth=1 https://github.com/immortalwrt/wwan-packages package/wwan-packages
 git clone --depth=1 --single-branch --branch js https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic package/luci-app-unblockneteasemusic
-git clone --depth=1 --single-branch --branch https://github.com/lwb1978/openwrt-gecoosac package/luci-app-gecoosac
 git clone --depth=1 --single-branch --branch main https://github.com/asvow/luci-app-tailscale package/luci-app-tailscale
+git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac package/luci-app-gecoosac
+
+
 # 科学上网插件
 #git clone --depth=1 -b main https://github.com/fw876/helloworld package/luci-app-ssr-plus
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall-packages package/openwrt-passwall
@@ -221,7 +223,7 @@ install_small8() {
         trojan-plus simple-obfs shadowsocksr-libev luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns \
         v2dat mosdns luci-app-mosdns adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm \
         luci-lib-taskd luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash luci-app-gecoosac
+        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash
 }
 
 install_feeds() {
