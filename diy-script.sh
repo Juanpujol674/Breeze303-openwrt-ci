@@ -45,6 +45,7 @@ git clone --depth=1 https://github.com/gdy666/luci-app-lucky.git package/lucky
 git clone --depth=1 --single-branch --branch js https://github.com/UnblockNeteaseMusic/luci-app-unblockneteasemusic package/luci-app-unblockneteasemusic
 git clone --depth=1 --single-branch --branch main https://github.com/asvow/luci-app-tailscale package/luci-app-tailscale
 git clone https://github.com/lwb1978/openwrt-gecoosac package/openwrt-gecoosac package/luci-app-gecoosac
+git clone --depth=1 --single-branch --branch master https://github.com/lisaac/luci-app-dockerman package/luci-app-dockerman
 
 
 # 科学上网插件
