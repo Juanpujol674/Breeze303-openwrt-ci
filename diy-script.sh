@@ -110,7 +110,7 @@ sed -i "s/${orig_version}/R${date_version} by Haiibo/g" package/lean/default-set
 cp -f $GITHUB_WORKSPACE/scripts/011-fix-mbo-modules-build.patch package/network/services/hostapd/patches/011-fix-mbo-modules-build.patch
 
 # 修复 armv8 设备 xfsprogs 报错
-sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE/g' feeds/packages/utils/xfsprogs/Makefile
+#sed -i 's/TARGET_CFLAGS.*/TARGET_CFLAGS += -DHAVE_MAP_SYNC -D_LARGEFILE64_SOURCE/g' feeds/packages/utils/xfsprogs/Makefile
 
 # 修改 Makefile
 #find package/*/ -maxdepth 2 -path "*/Makefile" | xargs -i sed -i 's/..\/..\/luci.mk/$(TOPDIR)\/feeds\/luci\/luci.mk/g' {}
@@ -144,7 +144,21 @@ install_small8() {
         adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-        luci-app-mihomo luci-app-homeproxy luci-app-amlogic
+        luci-app-mihomo luci-app-homeproxy luci-app-amlogic 
+}
+
+install_feeds() {
+    ./scripts/feeds update -i
+    for dir in $BUILD_DIR/feeds/*; do
+        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
+        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
+            if [[ $(basename "$dir") == "small8" ]]; then
+                install_small8
+            else
+                ./scripts/feeds install -f -ap $(basename "$dir")
+            fi
+        fi
+    done
 }
 
 
@@ -165,3 +179,23 @@ echo "CONFIG_PACKAGE_luci-app-lucky=y" >> ./.config
 # echo "CONFIG_DEFAULT_tcp_bbr=y" >> ./.config
 # docker(只能集成)
 echo "CONFIG_PACKAGE_luci-app-dockerman=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
+
+fix_miniupmpd() {
+    # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
+    local PKG_HASH=$(grep '^PKG_HASH:=' "$BUILD_DIR/feeds/packages/net/miniupnpd/Makefile" 2>/dev/null | cut -d '=' -f 2)
+
+    # 检查 miniupnp 版本，并且补丁文件是否存在
+    if [[ $PKG_HASH == "fbdd5501039730f04a8420ea2f8f54b7df63f9f04cde2dc67fa7371e80477bbe" && -f "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" ]]; then
+        # 使用 install 命令创建目录并复制补丁文件
+        install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
+    fi
+}
+
+change_dnsmasq2full() {
+    if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
+        sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
+    fi
+}
