@@ -124,3 +124,5 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 
 ./scripts/feeds update -a
 ./scripts/feeds install -a
+
+echo "CONFIG_PACKAGE_luci-app-dockerman=y" >> ./.config
