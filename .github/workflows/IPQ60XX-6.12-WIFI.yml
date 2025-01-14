@@ -1,4 +1,4 @@
-name: IPQ60XX-6.12-WIFI
+ame: IPQ60XX-6.12-WIFI
 
 on:
   workflow_dispatch:
@@ -95,6 +95,10 @@ jobs:
       run: |
         cd $OPENWRT_PATH
         ./scripts/feeds update -a
+        git clone --depth 1 https://github.com/sbwml/openwrt_pkgs.git package/new/custom
+        mv package/new/custom/luci-app-netspeedtest  package/new
+        mv package/new/custom/speedtest-cli package/new
+        rm -rf package/new/custom
         ./scripts/feeds install -a
   
     - name: Load Custom Configuration(加载自定义配置)
@@ -173,4 +177,3 @@ jobs:
           ### 🧊 固件版本
           - 固件内核版本：${{ env.VERSION_KERNEL }}
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-          - ${{ env.VERSION_INFO }}
