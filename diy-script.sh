@@ -126,15 +126,79 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-# 检查并添加 small-package 源
-if ! grep -q "small-package" "$OPENWRT_PATH/feeds.conf.default"; then
-    sed -i '$a src-git small8 https://github.com/kenzok8/small-package' $OPENWRT_PATH/feeds.conf.default
-fi
+# 检查并添加 small-package 源。下面5行代码是没有任何问题的。编译成功。为了同Z大一致，更新为下面的代码
+#if ! grep -q "small-package" "$OPENWRT_PATH/feeds.conf.default"; then
+#    sed -i '$a src-git small8 https://github.com/kenzok8/small-package' $OPENWRT_PATH/feeds.conf.default
+#fi
+#./scripts/feeds update -a
+#./scripts/feeds install -a
 
+update_feeds() {
+    # 删除注释行
+    sed -i '/^#/d' "$BUILD_DIR/$FEEDS_CONF"
 
-./scripts/feeds update -a
-./scripts/feeds install -a
+    # 检查并添加 small-package 源
+    if ! grep -q "small-package" "$BUILD_DIR/$FEEDS_CONF"; then
+        # 确保文件以换行符结尾
+        [ -z "$(tail -c 1 "$BUILD_DIR/$FEEDS_CONF")" ] || echo "" >>"$BUILD_DIR/$FEEDS_CONF"
+        echo "src-git small8 https://github.com/kenzok8/small-package" >>"$BUILD_DIR/$FEEDS_CONF"
+    fi
 
+    # 添加bpf.mk解决更新报错
+    if [ ! -f "$BUILD_DIR/include/bpf.mk" ]; then
+        touch "$BUILD_DIR/include/bpf.mk"
+    fi
+
+    # 更新 feeds
+    ./scripts/feeds clean
+    ./scripts/feeds update -a
+}
+
+remove_unwanted_packages() {
+    local luci_packages=(
+        "luci-app-passwall" "luci-app-smartdns" "luci-app-ddns-go" "luci-app-rclone"
+        "luci-app-ssr-plus" "luci-app-vssr" "luci-theme-argon" "luci-app-daed" "luci-app-dae"
+        "luci-app-alist" "luci-app-argon-config" "luci-app-homeproxy" "luci-app-haproxy-tcp"
+        "luci-app-openclash" "luci-app-mihomo"
+    )
+    local packages_net=(
+        "haproxy" "xray-core" "xray-plugin" "dns2socks" "alist" "hysteria"
+        "smartdns" "mosdns" "adguardhome" "ddns-go" "naiveproxy" "shadowsocks-rust"
+        "sing-box" "v2ray-core" "v2ray-geodata" "v2ray-plugin" "tuic-client"
+        "chinadns-ng" "ipt2socks" "tcping" "trojan-plus" "simple-obfs"
+        "shadowsocksr-libev" "dae" "daed" "mihomo" "geoview"
+    )
+    local small8_packages=(
+        "ppp" "firewall" "dae" "daed" "daed-next" "libnftnl" "nftables" "dnsmasq"
+    )
+
+    for pkg in "${luci_packages[@]}"; do
+        \rm -rf ./feeds/luci/applications/$pkg
+        \rm -rf ./feeds/luci/themes/$pkg
+    done
+
+    for pkg in "${packages_net[@]}"; do
+        \rm -rf ./feeds/packages/net/$pkg
+    done
+
+    for pkg in "${small8_packages[@]}"; do
+        \rm -rf ./feeds/small8/$pkg
+    done
+
+    if [[ -d ./package/istore ]]; then
+        \rm -rf ./package/istore
+    fi
+
+    # 临时放一下，清理脚本
+    find $BUILD_DIR/package/base-files/files/etc/uci-defaults/ -type f -name "9*.sh" -exec rm -f {} +
+}
+
+update_golang() {
+    if [[ -d ./feeds/packages/lang/golang ]]; then
+        \rm -rf ./feeds/packages/lang/golang
+        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+    fi
+}
 
 install_small8() {
     ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
