@@ -246,7 +246,11 @@ fix_miniupmpd() {
         install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
     fi
 }
-
+#配置文件修改
+echo "CONFIG_PACKAGE_luci=y" >> ./.config
+echo "CONFIG_LUCI_LANG_zh_Hans=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-theme-$WRT_THEME=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-$WRT_THEME-config=y" >> ./.config
 
 # 可以让FinalShell查看文件列表并且ssh连上不会自动断开
 #echo "CONFIG_PACKAGE_openssh-sftp-server=y" >> ./.config
