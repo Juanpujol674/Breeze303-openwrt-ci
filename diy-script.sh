@@ -61,7 +61,7 @@ git_sparse_clone master https://github.com/VIKINGYFY/homeproxy luci-app-homeprox
 #git_sparse_clone main https://github.com/haiibo/packages luci-theme-atmaterial luci-theme-opentomcat luci-theme-netgear
 
 # 更改 Argon 主题背景
-#cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
 
 # 晶晨宝盒
 git_sparse_clone main https://github.com/ophub/luci-app-amlogic luci-app-amlogic
@@ -236,25 +236,6 @@ install_feeds() {
     done
 }
 
-fix_default_set() {
-    # 修改默认主题
-    if [ -d "$BUILD_DIR/feeds/luci/collections/" ]; then
-        find "$BUILD_DIR/feeds/luci/collections/" -type f -name "Makefile" -exec sed -i "s/luci-theme-bootstrap/luci-theme-$THEME_SET/g" {} \;
-    fi
-
-    if [ -d "$BUILD_DIR/feeds/small8/luci-theme-argon" ]; then
-        find "$BUILD_DIR/feeds/small8/luci-theme-argon" -type f -name "cascade*" -exec sed -i 's/--bar-bg/--primary/g' {} \;
-    fi
-
-    install -Dm755 "$BASE_PATH/patches/99_set_argon_primary" "$BUILD_DIR/package/base-files/files/etc/uci-defaults/99_set_argon_primary"
-
-    if [ -f "$BUILD_DIR/package/emortal/autocore/files/tempinfo" ]; then
-        if [ -f "$BASE_PATH/patches/tempinfo" ]; then
-            \cp -f "$BASE_PATH/patches/tempinfo" "$BUILD_DIR/package/emortal/autocore/files/tempinfo"
-        fi
-    fi
-}
-
 fix_miniupmpd() {
     # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
     local PKG_HASH=$(grep '^PKG_HASH:=' "$BUILD_DIR/feeds/packages/net/miniupnpd/Makefile" 2>/dev/null | cut -d '=' -f 2)
@@ -288,4 +269,4 @@ echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
-echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
+#echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
