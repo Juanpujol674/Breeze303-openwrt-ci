@@ -132,11 +132,11 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
 # 检查并添加 small-package 源。下面5行代码是没有任何问题的。编译成功。为了同Z大一致，更新为下面的代码
-#if ! grep -q "small-package" "$OPENWRT_PATH/feeds.conf.default"; then
-#    sed -i '$a src-git small8 https://github.com/kenzok8/small-package' $OPENWRT_PATH/feeds.conf.default
-#fi
-#./scripts/feeds update -a
-#./scripts/feeds install -a
+if ! grep -q "small-package" "$OPENWRT_PATH/feeds.conf.default"; then
+    sed -i '$a src-git small8 https://github.com/kenzok8/small-package' $OPENWRT_PATH/feeds.conf.default
+fi
+./scripts/feeds update -a
+./scripts/feeds install -a
 
 
 remove_unwanted_packages() {
@@ -196,19 +196,6 @@ install_small8() {
         luci-app-mihomo luci-app-homeproxy luci-app-amlogic luci-app-argon-config
 }
 
-install_feeds() {
-    ./scripts/feeds update -i
-    for dir in $BUILD_DIR/feeds/*; do
-        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
-        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
-            if [[ $(basename "$dir") == "small8" ]]; then
-                install_small8
-            else
-                ./scripts/feeds install -f -ap $(basename "$dir")
-            fi
-        fi
-    done
-}
 
 fix_miniupmpd() {
     # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
@@ -218,6 +205,20 @@ fix_miniupmpd() {
     if [[ $PKG_HASH == "fbdd5501039730f04a8420ea2f8f54b7df63f9f04cde2dc67fa7371e80477bbe" && -f "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" ]]; then
         # 使用 install 命令创建目录并复制补丁文件
         install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
+    fi
+}
+change_dnsmasq2full() {
+    if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
+        sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
+    fi
+}
+
+chk_fullconenat() {
+    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat-nft ]; then
+        \cp -rf $BASE_PATH/fullconenat/fullconenat-nft $BUILD_DIR/package/network/utils
+    fi
+    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat ]; then
+        \cp -rf $BASE_PATH/fullconenat/fullconenat $BUILD_DIR/package/network/utils
     fi
 }
 
