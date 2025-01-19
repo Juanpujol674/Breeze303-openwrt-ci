@@ -50,21 +50,16 @@ git clone --depth=1 https://github.com/kongfl888/luci-app-adguardhome package/lu
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall package/luci-app-passwall
 #git clone --depth=1 https://github.com/xiaorouji/openwrt-passwall2 package/luci-app-passwall2
 #git_sparse_clone master https://github.com/vernesong/OpenClash luci-app-openclash
-git_sparse_clone master https://github.com/VIKINGYFY/homeproxy luci-app-homeproxy
-
 
 # Themes
-git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
-git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
-git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
-git clone --depth=1 https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
-git_sparse_clone main https://github.com/haiibo/packages luci-theme-atmaterial luci-theme-opentomcat luci-theme-netgear
-#下面这个可能是对的
-#git clone --depth=1 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
-
+#git clone --depth=1 -b 18.06 https://github.com/kiddin9/luci-theme-edge package/luci-theme-edge
+#git clone --depth=1 -b 18.06 https://github.com/jerrykuku/luci-theme-argon package/luci-theme-argon
+#git clone --depth=1 https://github.com/jerrykuku/luci-app-argon-config package/luci-app-argon-config
+#git clone --depth=1 https://github.com/xiaoqingfengATGH/luci-theme-infinityfreedom package/luci-theme-infinityfreedom
+#git_sparse_clone main https://github.com/haiibo/packages luci-theme-atmaterial luci-theme-opentomcat luci-theme-netgear
 
 # 更改 Argon 主题背景
-cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
+#cp -f $GITHUB_WORKSPACE/images/bg1.jpg package/luci-theme-argon/htdocs/luci-static/argon/img/bg1.jpg
 
 # 晶晨宝盒
 git_sparse_clone main https://github.com/ophub/luci-app-amlogic luci-app-amlogic
@@ -131,30 +126,15 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/model/cbi/v2ray_server/*.lua
 # sed -i 's/services/vpn/g' feeds/luci/applications/luci-app-v2ray-server/luasrc/view/v2ray_server/*.htm
 
-# 检查并添加 small-package 源。下面5行代码是没有任何问题的。编译成功。为了同Z大一致，更新为下面的代码
+# 检查并添加 small-package 源
 if ! grep -q "small-package" "$OPENWRT_PATH/feeds.conf.default"; then
     sed -i '$a src-git small8 https://github.com/kenzok8/small-package' $OPENWRT_PATH/feeds.conf.default
 fi
+
+
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-
-remove_unwanted_packages() {
-
-    if [[ -d ./package/istore ]]; then
-        \rm -rf ./package/istore
-    fi
-
-    # 临时放一下，清理脚本
-    find $BUILD_DIR/package/base-files/files/etc/uci-defaults/ -type f -name "9*.sh" -exec rm -f {} +
-}
-
-update_golang() {
-    if [[ -d ./feeds/packages/lang/golang ]]; then
-        \rm -rf ./feeds/packages/lang/golang
-        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
-    fi
-}
 
 install_small8() {
     ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
@@ -164,41 +144,23 @@ install_small8() {
         adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-        luci-app-mihomo luci-app-homeproxy luci-app-amlogic luci-app-argon-config
+        luci-app-mihomo luci-app-homeproxy luci-app-amlogic 
 }
 
-
-fix_miniupmpd() {
-    # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
-    local PKG_HASH=$(grep '^PKG_HASH:=' "$BUILD_DIR/feeds/packages/net/miniupnpd/Makefile" 2>/dev/null | cut -d '=' -f 2)
-
-    # 检查 miniupnp 版本，并且补丁文件是否存在
-    if [[ $PKG_HASH == "fbdd5501039730f04a8420ea2f8f54b7df63f9f04cde2dc67fa7371e80477bbe" && -f "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" ]]; then
-        # 使用 install 命令创建目录并复制补丁文件
-        install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
-    fi
-}
-change_dnsmasq2full() {
-    if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
-        sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
-    fi
+install_feeds() {
+    ./scripts/feeds update -i
+    for dir in $BUILD_DIR/feeds/*; do
+        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
+        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
+            if [[ $(basename "$dir") == "small8" ]]; then
+                install_small8
+            else
+                ./scripts/feeds install -f -ap $(basename "$dir")
+            fi
+        fi
+    done
 }
 
-chk_fullconenat() {
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat-nft ]; then
-        \cp -rf $BASE_PATH/fullconenat/fullconenat-nft $BUILD_DIR/package/network/utils
-    fi
-    if [ ! -d $BUILD_DIR/package/network/utils/fullconenat ]; then
-        \cp -rf $BASE_PATH/fullconenat/fullconenat $BUILD_DIR/package/network/utils
-    fi
-}
-
-fix_mk_def_depends() {
-    sed -i 's/libustream-mbedtls/libustream-openssl/g' $BUILD_DIR/include/target.mk 2>/dev/null
-    if [ -f $BUILD_DIR/target/linux/qualcommax/Makefile ]; then
-        sed -i 's/wpad-basic-mbedtls/wpad-openssl/g' $BUILD_DIR/target/linux/qualcommax/Makefile
-    fi
-}
 
 # 可以让FinalShell查看文件列表并且ssh连上不会自动断开
 #echo "CONFIG_PACKAGE_openssh-sftp-server=y" >> ./.config
@@ -221,4 +183,21 @@ echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
-#echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
+
+fix_miniupmpd() {
+    # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
+    local PKG_HASH=$(grep '^PKG_HASH:=' "$BUILD_DIR/feeds/packages/net/miniupnpd/Makefile" 2>/dev/null | cut -d '=' -f 2)
+
+    # 检查 miniupnp 版本，并且补丁文件是否存在
+    if [[ $PKG_HASH == "fbdd5501039730f04a8420ea2f8f54b7df63f9f04cde2dc67fa7371e80477bbe" && -f "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" ]]; then
+        # 使用 install 命令创建目录并复制补丁文件
+        install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
+    fi
+}
+
+change_dnsmasq2full() {
+    if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
+        sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
+    fi
+}
