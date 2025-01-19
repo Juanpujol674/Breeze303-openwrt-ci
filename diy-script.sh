@@ -222,6 +222,13 @@ chk_fullconenat() {
     fi
 }
 
+fix_mk_def_depends() {
+    sed -i 's/libustream-mbedtls/libustream-openssl/g' $BUILD_DIR/include/target.mk 2>/dev/null
+    if [ -f $BUILD_DIR/target/linux/qualcommax/Makefile ]; then
+        sed -i 's/wpad-basic-mbedtls/wpad-openssl/g' $BUILD_DIR/target/linux/qualcommax/Makefile
+    fi
+}
+
 # 可以让FinalShell查看文件列表并且ssh连上不会自动断开
 #echo "CONFIG_PACKAGE_openssh-sftp-server=y" >> ./.config
 # 解析、查询、操作和格式化 JSON 数据
