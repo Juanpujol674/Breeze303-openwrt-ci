@@ -135,6 +135,22 @@ fi
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
+remove_unwanted_packages() {
+
+    if [[ -d ./package/istore ]]; then
+        \rm -rf ./package/istore
+    fi
+
+    # 临时放一下，清理脚本
+    find $BUILD_DIR/package/base-files/files/etc/uci-defaults/ -type f -name "9*.sh" -exec rm -f {} +
+}
+
+update_golang() {
+    if [[ -d ./feeds/packages/lang/golang ]]; then
+        \rm -rf ./feeds/packages/lang/golang
+        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+    fi
+}
 
 install_small8() {
     ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
