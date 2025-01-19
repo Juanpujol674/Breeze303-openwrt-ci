@@ -138,35 +138,6 @@ find package/luci-theme-*/* -type f -name '*luci-theme-*' -print -exec sed -i '/
 #./scripts/feeds update -a
 #./scripts/feeds install -a
 
-reset_feeds_conf() {
-    git reset --hard origin/$REPO_BRANCH
-    git clean -f -d
-    git pull
-    if [[ $COMMIT_HASH != "none" ]]; then
-        git checkout $COMMIT_HASH
-    fi
-}
-
-update_feeds() {
-    # 删除注释行
-    sed -i '/^#/d' "$BUILD_DIR/$FEEDS_CONF"
-
-    # 检查并添加 small-package 源
-    if ! grep -q "small-package" "$BUILD_DIR/$FEEDS_CONF"; then
-        # 确保文件以换行符结尾
-        [ -z "$(tail -c 1 "$BUILD_DIR/$FEEDS_CONF")" ] || echo "" >>"$BUILD_DIR/$FEEDS_CONF"
-        echo "src-git small8 https://github.com/kenzok8/small-package" >>"$BUILD_DIR/$FEEDS_CONF"
-    fi
-
-    # 添加bpf.mk解决更新报错
-    if [ ! -f "$BUILD_DIR/include/bpf.mk" ]; then
-        touch "$BUILD_DIR/include/bpf.mk"
-    fi
-
-    # 更新 feeds
-    ./scripts/feeds clean
-    ./scripts/feeds update -a
-}
 
 remove_unwanted_packages() {
     local luci_packages=(
@@ -222,7 +193,7 @@ install_small8() {
         adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-        luci-app-mihomo luci-app-homeproxy luci-app-amlogic
+        luci-app-mihomo luci-app-homeproxy luci-app-amlogic luci-app-argon-config
 }
 
 install_feeds() {
