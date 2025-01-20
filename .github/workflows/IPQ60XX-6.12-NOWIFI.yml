@@ -94,22 +94,22 @@ jobs:
         ./scripts/feeds update -a
         ./scripts/feeds install -a
   
-        - name: Load Custom Configuration(加载自定义配置)
-        run: |
-          set -x  # 打开调试模式，输出每个命令的执行情况
+    - name: Load Custom Configuration(加载自定义配置)
+      run: |
+        set -x  # 打开调试模式，输出每个命令的执行情况
           
-          # 移动 files 目录（如果存在）
-          [ -e files ] && mv files $OPENWRT_PATH/files
+        # 移动 files 目录（如果存在）
+        [ -e files ] && mv files $OPENWRT_PATH/files
   
-          # 移动 .config 文件（如果存在）
-          [ -n "$CONFIG_FILE" ] && [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        # 移动 .config 文件（如果存在）
+        [ -n "$CONFIG_FILE" ] && [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
   
-          # 确保 DIY_SCRIPT 变量非空且存在后，再赋予执行权限
-          [ -n "$DIY_SCRIPT" ] && [ -e "$DIY_SCRIPT" ] && chmod +x "$DIY_SCRIPT"
+        # 确保 DIY_SCRIPT 变量非空且存在后，再赋予执行权限
+        [ -n "$DIY_SCRIPT" ] && [ -e "$DIY_SCRIPT" ] && chmod +x "$DIY_SCRIPT"
   
-          # 进入 OpenWrt 目录后执行 DIY 脚本（确保 DIY_SCRIPT 存在）
-          cd "$OPENWRT_PATH"
-          [ -n "$DIY_SCRIPT" ] && [ -e "$GITHUB_WORKSPACE/$DIY_SCRIPT" ] && bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
+        # 进入 OpenWrt 目录后执行 DIY 脚本（确保 DIY_SCRIPT 存在）
+        cd "$OPENWRT_PATH"
+        [ -n "$DIY_SCRIPT" ] && [ -e "$GITHUB_WORKSPACE/$DIY_SCRIPT" ] && bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
 
     - name: Download DL Package(下载DL软件包)
       run: |
