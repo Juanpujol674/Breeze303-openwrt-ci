@@ -6,16 +6,12 @@ on:
     - cron: 0 19 * * *
 
 env:
+  WRT_TARGET: ipq60xx  # 目标设备架构
+  WRT_VER: kernel-6.12  # 固件版本
+  WRT_DATE: ${{ github.run_number }}  # 或者使用 'date +%Y%m%d' 获取当前日期
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
   REPO_BRANCH: kernel-6.12
   CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
-  DIY_SCRIPT: diy-script.sh
-  CLASH_KERNEL: amd64
-  CACHE_TOOLCHAIN: true
-  UPLOAD_BIN_DIR: false
-  FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
-  TZ: Asia/Shanghai
 
 jobs:
   Build:
@@ -152,15 +148,11 @@ jobs:
         name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
         path: ${{ env.FIRMWARE_PATH }}
 
-    - name: Upload Firmware To Release(发布固件)
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-      uses: ncipollo/release-action@v1
+    - name: Release Firmware
+      uses: softprops/action-gh-release@v2
       with:
-        name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-        allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}
-        token: ${{ secrets.GITHUB_TOKEN }}
-        artifacts: ${{ env.FIRMWARE_PATH }}/*
+        tag_name: ${{ env.WRT_TARGET }}_${{ env.WRT_VER }}_${{ env.WRT_DATE }}
+        files: ./wrt/upload/*.*
         body: |
           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
           ### 📒 固件信息(无WIFI)
@@ -173,4 +165,4 @@ jobs:
           ### 🧊 固件版本
           - 固件内核版本：${{ env.VERSION_KERNEL }}
           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-          - ${{ env.VERSION_INFO }}
+          - ${{ env.VERSION_INFO
