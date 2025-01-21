@@ -97,19 +97,30 @@ jobs:
     - name: Load Custom Configuration(加载自定义配置)
       run: |
         set -x  # 打开调试模式，输出每个命令的执行情况
-          
+        
         # 移动 files 目录（如果存在）
-        [ -e files ] && mv files $OPENWRT_PATH/files
-  
+        [ -e files ] && mv files $OPENWRT_PATH/files || echo "Warning: 'files' not found, skipping."
+
         # 移动 .config 文件（如果存在）
         [ -n "$CONFIG_FILE" ] && [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
-  
-        # 确保 DIY_SCRIPT 变量非空且存在后，再赋予执行权限
-        [ -n "$DIY_SCRIPT" ] && [ -e "$DIY_SCRIPT" ] && chmod +x "$DIY_SCRIPT"
-  
-        # 进入 OpenWrt 目录后执行 DIY 脚本（确保 DIY_SCRIPT 存在）
+
+        # 仅在 DIY_SCRIPT 非空且存在时赋予执行权限
+        if [ -n "$DIY_SCRIPT" ] && [ -e "$DIY_SCRIPT" ]; then
+          chmod +x "$DIY_SCRIPT"
+        else
+          echo "Warning: DIY_SCRIPT is empty or not found, skipping."
+        fi
+
+        # 进入 OpenWrt 目录
         cd "$OPENWRT_PATH"
-        [ -n "$DIY_SCRIPT" ] && [ -e "$GITHUB_WORKSPACE/$DIY_SCRIPT" ] && bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
+
+        # 仅在 DIY_SCRIPT 非空且存在时执行
+        if [ -n "$DIY_SCRIPT" ] && [ -e "$GITHUB_WORKSPACE/$DIY_SCRIPT" ]; then
+          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
+        else
+          echo "Warning: DIY_SCRIPT is empty or not found, skipping execution."
+        fi
+
 
     - name: Download DL Package(下载DL软件包)
       run: |
