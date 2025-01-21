@@ -1,4 +1,3 @@
-
 name: IPQ60XX-6.12-NOWIFI
 
 on:
@@ -7,13 +6,18 @@ on:
     - cron: 0 19 * * *
 
 env:
-  WRT_TARGET: ipq60xx  # 目标设备架构
-  WRT_VER: kernel-6.12  # 固件版本
-  WRT_DATE: ${{ github.run_number }}  # 或者使用 'date +%Y%m%d' 获取当前日期
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
   REPO_BRANCH: kernel-6.12
   CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
+  DIY_SCRIPT: diy-script.sh
+  WRT_VER: kernel-6.12
+  WRT_DATE: ${{ github.run_number }}
+  CACHE_TOOLCHAIN: true
+  UPLOAD_BIN_DIR: false
+  FIRMWARE_RELEASE: true
+  WRT_TARGET: IPQ60XX-6.12-NoWifi
   TZ: Asia/Shanghai
+
 jobs:
   Build:
     runs-on: ubuntu-22.04
@@ -21,30 +25,20 @@ jobs:
     steps:
     - name: Check Server Performance(检查服务器性能)
       run: |
-        echo "警告⚠"
-        echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
-        echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
+        echo "警告⚠ 服务器性能有限，若选择的插件过多，务必注意CPU性能！"
         echo "--------------------------CPU信息--------------------------"
-        echo "CPU物理数量：$(cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l)"
-        echo -e "CPU核心信息：$(cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c) \n"
+        echo "CPU核心信息：$(grep 'model name' /proc/cpuinfo | sort | uniq -c)"
         echo "--------------------------内存信息--------------------------"
-        echo "已安装内存详细信息："
-        echo -e "$(sudo lshw -short -C memory | grep GiB) \n"
+        free -h
         echo "--------------------------硬盘信息--------------------------"
-        echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
+        df -hT
 
     - name: Initialization Environment(初始化环境)
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        docker rmi $(docker images -q)
-        sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
-        sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
-        sudo -E apt-get -y update
-        sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
-        sudo -E systemctl daemon-reload
-        sudo -E apt-get -y autoremove --purge
-        sudo -E apt-get -y clean
+        sudo apt-get update
+        sudo apt-get install -y $(curl -fsSL is.gd/depends_ubuntu_2204)
         sudo timedatectl set-timezone "$TZ"
 
     - name: Combine Disks(合并磁盘)
@@ -59,115 +53,51 @@ jobs:
 
     - name: Clone Source Code(克隆源代码)
       run: |
-        df -hT $GITHUB_WORKSPACE
         git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
         cd openwrt
         echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-        VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
-        echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
         VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
         echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
     - name: Generate Variables(生成变量)
       run: |
-        cp $CONFIG_FILE $OPENWRT_PATH/.config
-        cd $OPENWRT_PATH
-        make defconfig > /dev/null 2>&1
-        SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
-        echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-        DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
-        echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-        DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
-        echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
-
-    - name: Cache Toolchain(缓存工具链)
-      if: env.CACHE_TOOLCHAIN == 'true'
-      uses: HiGarfield/cachewrtbuild@main
-      with:
-        ccache: false
-        mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
-        prefix: ${{ env.OPENWRT_PATH }}
-    
-    - name: Install Feeds(安装feeds)
-      run: |
-        cd $OPENWRT_PATH
-        ./scripts/feeds update -a
-        ./scripts/feeds install -a
-  
-    - name: Load Custom Configuration(加载自定义配置)
-      run: |
-        set -x  # 打开调试模式，输出每个命令的执行情况
-        
-        # 移动 files 目录（如果存在）
-        [ -e files ] && mv files $OPENWRT_PATH/files || echo "Warning: 'files' not found, skipping."
-
-        # 移动 .config 文件（如果存在）
-        [ -n "$CONFIG_FILE" ] && [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
-
-        # 仅在 DIY_SCRIPT 非空且存在时赋予执行权限
-        if [ -n "$DIY_SCRIPT" ] && [ -e "$DIY_SCRIPT" ]; then
-          chmod +x "$DIY_SCRIPT"
-        else
-          echo "Warning: DIY_SCRIPT is empty or not found, skipping."
+        if [ ! -f "$CONFIG_FILE" ]; then
+          echo "Error: Configuration file $CONFIG_FILE not found!"
+          exit 1
         fi
-
-        # 进入 OpenWrt 目录
-        cd "$OPENWRT_PATH"
-
-        # 仅在 DIY_SCRIPT 非空且存在时执行
-        if [ -n "$DIY_SCRIPT" ] && [ -e "$GITHUB_WORKSPACE/$DIY_SCRIPT" ]; then
-          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
-        else
-          echo "Warning: DIY_SCRIPT is empty or not found, skipping execution."
-        fi
-
+        cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+        cd $OPENWRT_PATH
+        make defconfig
 
     - name: Download DL Package(下载DL软件包)
       run: |
         cd $OPENWRT_PATH
         make defconfig
-        make download -j8
-        find dl -size -1024c -exec ls -l {} \;
-        find dl -size -1024c -exec rm -f {} \;
+        small_files=$(find dl -size -1024c)
+        if [ -n "$small_files" ]; then
+          echo "Found small files in dl directory, removing them..."
+          find dl -size -1024c -exec rm -vf {} +
+        else
+          echo "No small files found in dl directory."
+        fi
+        make download -j8 || make download -j1
 
     - name: Compile Firmware(开始编译固件)
       id: compile
       run: |
         cd $OPENWRT_PATH
-        echo -e "$(nproc) thread compile"
-        make -j$(nproc) || make -j1 || make -j1 V=s
+        MAX_THREADS=$(nproc --all)
+        THREADS=$((MAX_THREADS < 4 ? 4 : MAX_THREADS))  # 限制最大线程数为4
+        make -j$THREADS || { echo "⚠️ 编译失败，尝试单线程编译获取详细日志..."; make -j1 V=s; }
         echo "status=success" >> $GITHUB_OUTPUT
-        echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-        echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
-
-    - name: Check Space Usage(检查空间使用情况)
-      if: (!cancelled())
-      run: df -hT
+        echo "DATE=$(date +"%Y-%m-%d_%H-%M-%S")" >> $GITHUB_ENV
 
     - name: Upload Bin Directory(上传固件)
-      if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
+      if: ${{ steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true' }}
       uses: actions/upload-artifact@main
       with:
-        name: ${{ env.SOURCE_REPO }}-bin-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
+        name: ${{ env.WRT_TARGET }}-bin
         path: ${{ env.OPENWRT_PATH }}/bin
-
-    - name: Organize Files(整理文件)
-      if: steps.compile.outputs.status == 'success'
-      run: |
-        cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums
-        cp $OPENWRT_PATH/.config build.config
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.ipk packages
-        tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-
-    - name: Upload Firmware To Artifact(将固件上传到Artifact)
-      if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-      uses: actions/upload-artifact@main
-      with:
-        name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
-        path: ${{ env.FIRMWARE_PATH }}
 
     - name: Release Firmware
       uses: softprops/action-gh-release@v2
