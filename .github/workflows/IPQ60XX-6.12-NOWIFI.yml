@@ -154,8 +154,8 @@ jobs:
       uses: ncipollo/release-action@v1
       with:
         name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-        allowUpdates: true
-        tag: ${{ env.FIRMWARE_TAG }}
+        allowUpdates: false  # 修改为false，确保不覆盖旧固件
+        tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}  # 添加日期作为tag后缀，确保每次发布都是唯一的
         token: ${{ secrets.GITHUB_TOKEN }}
         artifacts: ${{ env.FIRMWARE_PATH }}/*
         body: |
