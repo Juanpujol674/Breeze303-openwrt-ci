@@ -101,7 +101,10 @@ jobs:
       run: |
         [ -e files ] && mv files $OPENWRT_PATH/files
         [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-
+        chmod +x $DIY_SCRIPT
+        cd $OPENWRT_PATH
+        bash $GITHUB_WORKSPACE/$DIY_SCRIPT
+        
     - name: Download DL Package(下载DL软件包)
       run: |
         cd $OPENWRT_PATH
@@ -134,14 +137,32 @@ jobs:
     - name: Organize Files(整理文件)
       if: steps.compile.outputs.status == 'success'
       run: |
+      # 进入 bin/targets 目录
         cd $OPENWRT_PATH/bin/targets/*/*
-        cat sha256sums
-        cp $OPENWRT_PATH/.config build.config
-        mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages
-        tar -zcf Packages.tar.gz packages
-        rm -rf packages feeds.buildinfo version.buildinfo
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
+      # 打印当前目录结构（调试用）
+      echo "Current directory:"
+      ls -R
+
+    # 复制 .config 文件
+      cp $OPENWRT_PATH/.config build.config
+
+    # 移动软件包文件（根据实际扩展名调整）
+      mkdir -p packages
+      if ls $OPENWRT_PATH/bin/packages/*/*/*.apk > /dev/null 2>&1; then
+        mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages
+      else
+        echo "No .apk files found in packages directory."
+      fi
+
+    # 打包 packages 目录
+    tar -zcf Packages.tar.gz packages
+
+    # 清理不必要的文件
+    rm -rf packages feeds.buildinfo version.buildinfo
+
+    # 设置 FIRMWARE_PATH 环境变量
+    echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
     - name: Upload Firmware To Artifact(将固件上传到Artifact)
       if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
       uses: actions/upload-artifact@main
