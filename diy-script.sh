@@ -135,48 +135,6 @@ fi
 ./scripts/feeds update -a
 ./scripts/feeds install -a
 
-remove_unwanted_packages() {
-
-    if [[ -d ./package/istore ]]; then
-        \rm -rf ./package/istore
-    fi
-
-    # 临时放一下，清理脚本
-    find $BUILD_DIR/package/base-files/files/etc/uci-defaults/ -type f -name "9*.sh" -exec rm -f {} +
-}
-
-update_golang() {
-    if [[ -d ./feeds/packages/lang/golang ]]; then
-        \rm -rf ./feeds/packages/lang/golang
-        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
-    fi
-}
-
-install_small8() {
-    ./scripts/feeds install -p small8 -f xray-core xray-plugin dns2tcp dns2socks haproxy hysteria \
-        naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
-        tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
-        luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
-        adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm  \
-        luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
-        luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
-        luci-app-mihomo luci-app-homeproxy luci-app-amlogic 
-}
-
-install_feeds() {
-    ./scripts/feeds update -i
-    for dir in $BUILD_DIR/feeds/*; do
-        # 检查是否为目录并且不以 .tmp 结尾，并且不是软链接
-        if [ -d "$dir" ] && [[ ! "$dir" == *.tmp ]] && [ ! -L "$dir" ]; then
-            if [[ $(basename "$dir") == "small8" ]]; then
-                install_small8
-            else
-                ./scripts/feeds install -f -ap $(basename "$dir")
-            fi
-        fi
-    done
-}
-
 
 # 可以让FinalShell查看文件列表并且ssh连上不会自动断开
 #echo "CONFIG_PACKAGE_openssh-sftp-server=y" >> ./.config
@@ -198,22 +156,6 @@ echo "CONFIG_PACKAGE_luci-app-dockerman=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
-echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
+#echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
 
-fix_miniupmpd() {
-    # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
-    local PKG_HASH=$(grep '^PKG_HASH:=' "$BUILD_DIR/feeds/packages/net/miniupnpd/Makefile" 2>/dev/null | cut -d '=' -f 2)
-
-    # 检查 miniupnp 版本，并且补丁文件是否存在
-    if [[ $PKG_HASH == "fbdd5501039730f04a8420ea2f8f54b7df63f9f04cde2dc67fa7371e80477bbe" && -f "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" ]]; then
-        # 使用 install 命令创建目录并复制补丁文件
-        install -Dm644 "$BASE_PATH/patches/400-fix_nft_miniupnp.patch" "$BUILD_DIR/feeds/packages/net/miniupnpd/patches/400-fix_nft_miniupnp.patch"
-    fi
-}
-
-change_dnsmasq2full() {
-    if ! grep -q "dnsmasq-full" $BUILD_DIR/include/target.mk; then
-        sed -i 's/dnsmasq/dnsmasq-full/g' ./include/target.mk
-    fi
-}
