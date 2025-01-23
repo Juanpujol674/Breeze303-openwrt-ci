@@ -157,7 +157,7 @@ install_small8() {
         naiveproxy shadowsocks-rust sing-box v2ray-core v2ray-geodata v2ray-geoview v2ray-plugin \
         tuic-client chinadns-ng ipt2socks tcping trojan-plus simple-obfs shadowsocksr-libev \
         luci-app-passwall alist luci-app-alist smartdns luci-app-smartdns v2dat mosdns luci-app-mosdns \
-        adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm luci-lib-taskd \
+        adguardhome luci-app-adguardhome ddns-go luci-app-ddns-go taskd luci-lib-xterm  \
         luci-app-store quickstart luci-app-quickstart luci-app-istorex luci-app-cloudflarespeedtest \
         luci-theme-argon netdata luci-app-netdata lucky luci-app-lucky luci-app-openclash mihomo \
         luci-app-mihomo luci-app-homeproxy luci-app-amlogic 
@@ -199,7 +199,7 @@ echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
-#echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
+echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
 
 fix_miniupmpd() {
     # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
