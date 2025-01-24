@@ -46,6 +46,8 @@ clean_up() {
     fi
     mkdir -p $BUILD_DIR/tmp
     echo "1" >$BUILD_DIR/tmp/.build
+    cp "$BASE_PATH/configs/generic.config" "$BUILD_DIR/.config"  # 提供基础配置模板
+    make defconfig  # 生成完整配置
 }
 
 reset_feeds_conf() {
@@ -75,7 +77,7 @@ update_feeds() {
 
     # 更新 feeds
     ./scripts/feeds clean
-    ./scripts/feeds update -a
+    "$BUILD_DIR/scripts/feeds" update -a
 }
 
 remove_unwanted_packages() {
