@@ -76,7 +76,7 @@ update_feeds() {
     fi
 
     # 更新 feeds
-    ./scripts/feeds clean
+    "$BUILD_DIR/scripts/feeds" clean
     "$BUILD_DIR/scripts/feeds" update -a
 }
 
@@ -491,11 +491,15 @@ sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 
 install_dependencies() {
-    sudo apt-get update
-    sudo apt-get install -y build-essential ccache ecj fastjar file g++ gawk \
-    gettext git java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev \
-    libssl-dev python3 python3-distutils python3-setuptools rsync subversion \
-    swig time u-boot-tools unzip wget xsltproc zlib1g-dev
+    sudo apt-get update -o Acquire::Retries=3
+    sudo apt-get install -y \
+        --allow-unauthenticated \
+        -o DPkg::options::="--force-confdef" \
+        -o DPkg::options::="--force-confold" \
+        build-essential ccache ecj fastjar file g++ gawk \
+        gettext git java-propose-classpath libelf-dev libncurses5-dev \
+        libncursesw5-dev libssl-dev python3 python3-distutils python3-setuptools \
+        rsync subversion swig time u-boot-tools unzip wget xsltproc zlib1g-dev
 }
 
 main() {
@@ -516,7 +520,6 @@ main() {
     remove_something_nss_kmod
     remove_affinity_script
     fix_build_for_openssl
-    update_ath11k_fw
     # fix_mkpkg_format_invalid
     chanage_cpuusage
     update_tcping
