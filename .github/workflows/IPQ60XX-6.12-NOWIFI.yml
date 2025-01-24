@@ -17,9 +17,56 @@ env:
   FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
   TZ: Asia/Shanghai
 
+name: OpenWrt Build
+
+on:
+  push:
+    branches: [ main ]
+
 jobs:
-  Build:
+  build:
     runs-on: ubuntu-22.04
+    env:
+      REPO_URL: https://github.com/your/openwrt-repo.git  # 必须替换为真实仓库地址
+      REPO_BRANCH: "kernel-6.12"
+      BUILD_DIR: ${{ github.workspace }}/openwrt
+
+    steps:
+      - name: Checkout current repo
+        uses: actions/checkout@v4
+
+      - name: Clone OpenWrt Source
+        run: |
+          # ======================
+          # 调试信息输出
+          # ======================
+          echo "=== 环境变量验证 ==="
+          echo "REPO_BRANCH: $REPO_BRANCH"
+          echo "REPO_URL: $REPO_URL"
+          echo "BUILD_DIR: $BUILD_DIR"
+
+          # ======================
+          # 变量安全检查
+          # ======================
+          if [ -z "$REPO_BRANCH" ]; then
+            echo "❌ 致命错误: REPO_BRANCH 变量为空"
+            exit 1
+          fi
+
+          # ======================
+          # 核心克隆操作
+          # ======================
+          echo "🔄 正在克隆仓库..."
+          git clone --progress --depth 1 -b "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
+
+          # ======================
+          # 结果验证
+          # ======================
+          echo "✅ 克隆完成，目录内容:"
+          ls -la $BUILD_DIR
+          echo "---------------------"
+          echo "分支验证:"
+          git -C $BUILD_DIR branch -a
 
     steps:
       - name: Check Server Performance(检查服务器性能)
