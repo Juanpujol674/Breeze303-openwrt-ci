@@ -67,7 +67,7 @@ update_feeds() {
     if ! grep -q "small-package" "$BUILD_DIR/$FEEDS_CONF"; then
         # 确保文件以换行符结尾
         [ -z "$(tail -c 1 "$BUILD_DIR/$FEEDS_CONF")" ] || echo "" >>"$BUILD_DIR/$FEEDS_CONF"
-        echo "src-git small8 https://github.com/kenzok8/small-package" >>"$BUILD_DIR/$FEEDS_CONF"
+            echo "src-git small8 https://github.com/kenzok8/small-package.git^0123456" >>"$BUILD_DIR/$FEEDS_CONF"
     fi
 
     # 添加bpf.mk解决更新报错
@@ -122,7 +122,7 @@ remove_unwanted_packages() {
 update_golang() {
     if [[ -d ./feeds/packages/lang/golang ]]; then
         \rm -rf ./feeds/packages/lang/golang
-        git clone $GOLANG_REPO -b $GOLANG_BRANCH ./feeds/packages/lang/golang
+        git clone $GOLANG_REPO -b $GOLANG_BRANCH --depth 1 --single-branch ./feeds/packages/lang/golang
     fi
 }
 
@@ -145,7 +145,7 @@ install_feeds() {
             if [[ $(basename "$dir") == "small8" ]]; then
                 install_small8
             else
-                ./scripts/feeds install -f -ap $(basename "$dir")
+                "$BUILD_DIR/scripts/feeds" install -f -ap $(basename "$dir")
             fi
         fi
     done
@@ -239,6 +239,8 @@ remove_something_nss_kmod() {
         sed -i 's/kmod-qca-nss-drv-tunipip6//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-drv-vxlanmgr//g' $ipq_target_path
         sed -i 's/kmod-qca-nss-macsec//g' $ipq_target_path
+        sed -i '/kmod-qca-nss-drv-pppoe/!d' $ipq_mk_path  # 保留PPPoE支持
+        sed -i '/kmod-qca-nss-macsec/!d' $ipq_mk_path     # 保留MACsec支持
     fi
 
     if [ -f $ipq_mk_path ]; then
@@ -488,6 +490,14 @@ sed -i 's|/bin/login|/bin/login -f root|g' feeds/packages/utils/ttyd/files/ttyd.
 #echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 
+install_dependencies() {
+    sudo apt-get update
+    sudo apt-get install -y build-essential ccache ecj fastjar file g++ gawk \
+    gettext git java-propose-classpath libelf-dev libncurses5-dev libncursesw5-dev \
+    libssl-dev python3 python3-distutils python3-setuptools rsync subversion \
+    swig time u-boot-tools unzip wget xsltproc zlib1g-dev
+}
+
 main() {
     clone_repo
     clean_up
@@ -523,6 +533,4 @@ main() {
     fix_compile_coremark
     install_feeds
 }
-
 main "$@"
-
