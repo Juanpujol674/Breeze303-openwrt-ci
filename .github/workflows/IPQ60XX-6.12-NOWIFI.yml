@@ -5,68 +5,20 @@ on:
   schedule:
     - cron: "0 18 * * *"  # UTC时间18:00（北京时间凌晨2点）
 
-env:
-  REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
-  REPO_BRANCH: kernel-6.12
-  CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
-  DIY_SCRIPT: diy-script.sh
-  CLASH_KERNEL: amd64
-  CACHE_TOOLCHAIN: true
-  UPLOAD_BIN_DIR: false
-  FIRMWARE_RELEASE: true
-  FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
-  TZ: Asia/Shanghai
-
-name: OpenWrt Build
-
-on:
-  push:
-    branches: [ main ]
-
 jobs:
-  build:
+  Build:
     runs-on: ubuntu-22.04
     env:
-      REPO_URL: https://github.com/your/openwrt-repo.git  # 必须替换为真实仓库地址
-      REPO_BRANCH: "kernel-6.12"
-      BUILD_DIR: ${{ github.workspace }}/openwrt
-
-    steps:
-      - name: Checkout current repo
-        uses: actions/checkout@v4
-
-      - name: Clone OpenWrt Source
-        run: |
-          # ======================
-          # 调试信息输出
-          # ======================
-          echo "=== 环境变量验证 ==="
-          echo "REPO_BRANCH: $REPO_BRANCH"
-          echo "REPO_URL: $REPO_URL"
-          echo "BUILD_DIR: $BUILD_DIR"
-
-          # ======================
-          # 变量安全检查
-          # ======================
-          if [ -z "$REPO_BRANCH" ]; then
-            echo "❌ 致命错误: REPO_BRANCH 变量为空"
-            exit 1
-          fi
-
-          # ======================
-          # 核心克隆操作
-          # ======================
-          echo "🔄 正在克隆仓库..."
-          git clone --progress --depth 1 -b "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
-
-          # ======================
-          # 结果验证
-          # ======================
-          echo "✅ 克隆完成，目录内容:"
-          ls -la $BUILD_DIR
-          echo "---------------------"
-          echo "分支验证:"
-          git -C $BUILD_DIR branch -a
+      REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
+      REPO_BRANCH: kernel-6.12
+      CONFIG_FILE: configs/ipq60xx-6.12-nowifi.config
+      DIY_SCRIPT: diy-script.sh
+      CLASH_KERNEL: amd64
+      CACHE_TOOLCHAIN: true
+      UPLOAD_BIN_DIR: false
+      FIRMWARE_RELEASE: true
+      FIRMWARE_TAG: IPQ60XX-6.12-NOWIFI
+      TZ: Asia/Shanghai
 
     steps:
       - name: Check Server Performance(检查服务器性能)
@@ -105,16 +57,28 @@ jobs:
           root-reserve-mb: 1024
 
       - name: Checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v4  # 修改为稳定版本号
 
       - name: Clone Source Code(克隆源代码)
+        env:  # 显式传递环境变量
+          REPO_BRANCH: ${{ env.REPO_BRANCH }}
+          REPO_URL: ${{ env.REPO_URL }}
         run: |
           echo "▼▼▼▼▼ 工作区路径验证 ▼▼▼▼▼"
           df -hT "$GITHUB_WORKSPACE"
           ls -la "$GITHUB_WORKSPACE"
 
           echo "▼▼▼▼▼ 开始克隆仓库 ▼▼▼▼▼"
-          if ! git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt; then
+          echo "正在克隆分支: $REPO_BRANCH"
+          echo "仓库地址: $REPO_URL"
+          
+          # 添加分支存在性验证
+          if ! git ls-remote --exit-code --heads "$REPO_URL" "$REPO_BRANCH"; then
+            echo "::error::分支 $REPO_BRANCH 不存在于仓库中！"
+            exit 1
+          fi
+
+          if ! git clone --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" openwrt; then
             echo "::error::仓库克隆失败！URL: $REPO_URL 分支: $REPO_BRANCH"
             exit 1
           fi
@@ -152,7 +116,6 @@ jobs:
           DEVICE_SUBTARGET=$(grep 'CONFIG_TARGET_SUBTARGET=' .config | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-      # 后续步骤保持不变（可根据需要补充完整）
       - name: Cache Toolchain(缓存工具链)
         if: env.CACHE_TOOLCHAIN == 'true'
         uses: HiGarfield/cachewrtbuild@main
@@ -174,8 +137,6 @@ jobs:
           chmod +x "$DIY_SCRIPT"
           cd "$OPENWRT_PATH" || exit 1
           bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
-
-      # ... 其他步骤保持原有结构不变 ...
 
       - name: Download DL Package(下载DL软件包)
         run: |
@@ -206,36 +167,23 @@ jobs:
       - name: Organize Files(整理文件)
         if: steps.compile.outputs.status == 'success'
         run: |
-          # 进入 bin/targets 目录
           cd $OPENWRT_PATH/bin/targets/*/*
-
-          # 打印当前目录结构（调试用）
           echo "Current directory:"
           ls -R
-
-          # 复制 .config 文件
           cp $OPENWRT_PATH/.config build.config
-
-          # 移动软件包文件（根据实际扩展名调整）
           mkdir -p packages
           if ls $OPENWRT_PATH/bin/packages/*/*/*.apk > /dev/null 2>&1; then
             mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages
           else
             echo "No .apk files found in packages directory."
           fi
-
-          # 打包 packages 目录
           tar -zcf Packages.tar.gz packages
-
-          # 清理不必要的文件
           rm -rf packages feeds.buildinfo version.buildinfo
-
-          # 设置 FIRMWARE_PATH 环境变量
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
       - name: Upload Firmware To Artifact(将固件上传到Artifact)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
@@ -245,8 +193,8 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-          allowUpdates: false  # 修改为false，确保不覆盖旧固件
-          tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}  # 添加日期作为tag后缀，确保每次发布都是唯一的
+          allowUpdates: false
+          tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.FIRMWARE_PATH }}/*
           body: |
