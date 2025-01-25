@@ -111,28 +111,38 @@ jobs:
 
       - name: Load Custom Configuration(加载自定义配置)
         run: |
-          echo "::group::📁 迁移自定义文件"
-          if [ -d "files" ]; then
-            rsync -av --checksum files/ "$OPENWRT_PATH/files/"
-            echo "已迁移文件数：$(find "$OPENWRT_PATH/files" -type f | wc -l)"
-          else
-            echo "未检测到自定义文件目录"
-          fi
-          echo "::endgroup::"
+    # ======================
+    # 迁移自定义文件
+    # ======================
+        echo "::group::📁 迁移自定义文件"
+        if [ -d "files" ]; then
+          echo "检测到自定义文件目录，正在同步..."
+          mkdir -p "$OPENWRT_PATH/files"
+          rsync -av --checksum files/ "$OPENWRT_PATH/files/"
+      else
+          echo "未找到自定义文件目录"
+      fi
+      echo "::endgroup::"
 
-          echo "::group::🛠️ 执行自定义脚本"
-          script_path="$GITHUB_WORKSPACE/$DIY_SCRIPT"
-          chmod +x "$script_path"
-          
-          # 显式传递环境变量
-          export REPO_BRANCH="${{ env.REPO_BRANCH }}"
-          export REPO_URL="${{ env.REPO_URL }}"
-          
-          cd "$OPENWRT_PATH"
-          set -x
-          /usr/bin/time -v bash -e "$script_path"
-          set +x
-          echo "::endgroup::"
+    # ======================
+    # 执行自定义脚本
+    # ======================
+      echo "::group::🛠️ 执行自定义脚本"
+      export REPO_BRANCH="${{ env.REPO_BRANCH }}"  # 显式传递变量
+      export REPO_URL="${{ env.REPO_URL }}"
+      export BUILD_DIR="$OPENWRT_PATH"  # 确保BUILD_DIR变量存在
+    
+      echo "▼▼▼ 调试信息 ▼▼▼"
+      echo "当前分支: $REPO_BRANCH"
+      echo "仓库地址: $REPO_URL"
+      echo "构建目录: $BUILD_DIR"
+
+    # 添加严格的错误处理
+      set -euo pipefail
+      chmod +x "$DIY_SCRIPT"
+    
+    # 执行脚本时传递参数
+      /usr/bin/time -v bash -x "$DIY_SCRIPT" "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
 
       - name: Download DL Package(下载DL软件包)
         run: |
