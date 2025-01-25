@@ -1,8 +1,48 @@
 #!/usr/bin/env bash
+#!/bin/bash
+# ======================
+# 接收工作流传递的参数
+# ======================
+REPO_BRANCH="${1:-$REPO_BRANCH}"
+REPO_URL="${2:-$REPO_URL}"
+BUILD_DIR="${3:-$BUILD_DIR}"
+
+# ======================
+# 参数验证
+# ======================
+echo "▼▼▼ 脚本调试信息 ▼▼▼"
+echo "接收参数："
+echo "分支: $REPO_BRANCH"
+echo "仓库: $REPO_URL"
+echo "目录: $BUILD_DIR"
+
+if [ -z "$REPO_BRANCH" ]; then
+  echo "::error::REPO_BRANCH 参数未定义！"
+  exit 1
+fi
+
+# ======================
+# 安全克隆命令
+# ======================
+echo "执行克隆操作..."
+git clone --progress --depth 1 \
+  -b "${REPO_BRANCH}" \
+  "${REPO_URL}" \
+  "${BUILD_DIR}" || {
+    echo "::error::克隆失败！参数详情："
+    echo "分支: $REPO_BRANCH"
+    echo "URL: $REPO_URL"
+    echo "目录: $BUILD_DIR"
+    exit 1
+  }
+
+# 后续其他操作...
 
 set -e
 set -o errexit
 set -o errtrace
+
+
 
 # 定义错误处理函数
 error_handler() {
