@@ -138,22 +138,132 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Load Custom Configuration(加载自定义配置)
-        run: |
-          echo "::group::迁移自定义文件"
-          if [ -d "files" ]; then
-            cp -vr files "$OPENWRT_PATH/files"
-          else
-            echo "未找到自定义文件目录"
-          fi
-          echo "::endgroup::"
+- name: Load Custom Configuration(加载自定义配置)
+  run: |
+    # ======================
+    # 自定义文件迁移
+    # ======================
+    echo "::group::📁 迁移自定义文件 [开始]"
+    CUSTOM_FILES_SRC="$GITHUB_WORKSPACE/files"
+    CUSTOM_FILES_DEST="$OPENWRT_PATH/files"
 
-          echo "::group::执行自定义脚本"
-          chmod +x "$DIY_SCRIPT"
-          cd "$OPENWRT_PATH" || exit 1
-          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
-          echo "::endgroup::"
+    # 验证源目录
+    if [ -d "$CUSTOM_FILES_SRC" ]; then
+      echo "✅ 检测到自定义文件目录"
+      echo "源目录路径: $CUSTOM_FILES_SRC"
+      echo "目录内容大小: $(du -sh $CUSTOM_FILES_SRC | awk '{print $1}')"
+      
+      # 显示目录结构（最多3层）
+      echo "目录结构预览:"
+      find "$CUSTOM_FILES_SRC" -maxdepth 3 -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
 
+      # 创建目标目录
+      echo "创建目标目录: $CUSTOM_FILES_DEST"
+      mkdir -p "$CUSTOM_FILES_DEST" || {
+        echo "::error::无法创建目标目录！";
+        exit 1;
+      }
+
+      # 执行复制并验证
+      echo "正在同步文件..."
+      rsync -av --checksum "$CUSTOM_FILES_SRC/" "$CUSTOM_FILES_DEST/" || {
+        echo "::error::文件同步失败！";
+        exit 1;
+      }
+
+      # 验证复制结果
+      echo "✅ 同步完成，目标目录验证:"
+      echo "目标目录大小: $(du -sh $CUSTOM_FILES_DEST | awk '{print $1}')"
+      echo "文件数量: $(find "$CUSTOM_FILES_DEST" -type f | wc -l)"
+    else
+      echo "⚠️ 未找到自定义文件目录"
+      echo "当前工作目录内容 ($GITHUB_WORKSPACE):"
+      ls -lAh "$GITHUB_WORKSPACE"
+    fi
+    echo "::endgroup::"
+
+    # ======================
+    # 自定义脚本执行
+    # ======================
+    echo "::group::🛠️ 执行自定义脚本 [开始]"
+    SCRIPT_PATH="$GITHUB_WORKSPACE/$DIY_SCRIPT"
+
+    # 严格验证脚本存在性
+    if [ ! -f "$SCRIPT_PATH" ]; then
+      echo "::error::自定义脚本不存在！路径: $SCRIPT_PATH"
+      echo "可用脚本列表:"
+      find "$GITHUB_WORKSPACE" -type f -name "*.sh"
+      exit 1
+    fi
+
+    # 显示脚本信息
+    echo "脚本绝对路径: $SCRIPT_PATH"
+    echo "脚本基本信息:"
+    file "$SCRIPT_PATH"
+    echo "脚本大小: $(du -h "$SCRIPT_PATH" | cut -f1)"
+    echo "最后修改时间: $(date -r "$SCRIPT_PATH" "+%Y-%m-%d %H:%M:%S")"
+
+    # 脚本内容安全审查
+    echo "脚本内容摘要 (首尾5行):"
+    echo "----- 开始 -----"
+    head -n5 "$SCRIPT_PATH"
+    echo "..."
+    tail -n5 "$SCRIPT_PATH"
+    echo "----- 结束 -----"
+
+    # 权限设置
+    echo "设置执行权限..."
+    chmod -v +x "$SCRIPT_PATH" || {
+      echo "::error::权限设置失败！";
+      exit 1;
+    }
+
+    # 环境准备
+    echo "当前工作目录: $PWD"
+    echo "切换到OpenWrt目录: $OPENWRT_PATH"
+    cd "$OPENWRT_PATH" || {
+      echo "::error::无法进入OpenWrt目录！";
+      exit 1;
+    }
+
+    # 执行前快照
+    echo "执行前目录状态:"
+    git status --short || true
+    echo "磁盘使用情况:"
+    df -h .
+
+    # 执行脚本（严格模式）
+    echo "执行脚本..."
+    set -x  # 开启命令回显
+    /usr/bin/time -v bash -e "$SCRIPT_PATH"
+    EXIT_CODE=$?
+    set +x
+
+    # 执行后验证
+    if [ $EXIT_CODE -ne 0 ]; then
+      echo "::error::脚本执行失败！退出码: $EXIT_CODE"
+      echo "最后10条日志:"
+      tail -n10 "$OPENWRT_PATH/build.log" || true
+      exit $EXIT_CODE
+    fi
+
+    # 执行后快照
+    echo "✅ 脚本执行成功"
+    echo "执行后变更统计:"
+    git diff --stat || true
+    echo "磁盘使用情况:"
+    df -h .
+    echo "::endgroup::"
+
+    # ======================
+    # 最终验证
+    # ======================
+    echo "::group::🔍 最终配置验证"
+    echo "当前配置文件: $OPENWRT_PATH/.config"
+    echo "配置文件大小: $(du -h "$OPENWRT_PATH/.config" | cut -f1)"
+    echo "关键配置项:"
+    grep -E 'CONFIG_TARGET|CONFIG_PACKAGE' "$OPENWRT_PATH/.config" | sort
+    echo "::endgroup::"
       - name: Download DL Package(下载DL软件包)
         run: |
           cd "$OPENWRT_PATH" || exit 1
