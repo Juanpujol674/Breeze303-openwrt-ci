@@ -59,50 +59,103 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4  # 修改为稳定版本号
 
-      - name: Clone Source Code(克隆源代码)
-        env:  # 显式传递环境变量
-          REPO_BRANCH: ${{ env.REPO_BRANCH }}
-          REPO_URL: ${{ env.REPO_URL }}
-        run: |
-          echo "▼▼▼▼▼ 工作区路径验证 ▼▼▼▼▼"
-          df -hT "$GITHUB_WORKSPACE"
-          ls -la "$GITHUB_WORKSPACE"
+- name: Clone Source Code(克隆源代码)
+  env:
+    REPO_BRANCH: ${{ env.REPO_BRANCH }}
+    REPO_URL: ${{ env.REPO_URL }}
+  run: |
+    # ======================
+    # 预检验证
+    # ======================
+    echo "▼▼▼▼▼ 环境变量验证 ▼▼▼▼▼"
+    echo "工作区路径: $GITHUB_WORKSPACE"
+    echo "REPO_BRANCH: '$REPO_BRANCH'"
+    echo "REPO_URL: '$REPO_URL'"
 
-          echo "▼▼▼▼▼ 开始克隆仓库 ▼▼▼▼▼"
-          echo "正在克隆分支: $REPO_BRANCH"
-          echo "仓库地址: $REPO_URL"
-          
-          # 添加分支存在性验证
-          if ! git ls-remote --exit-code --heads "$REPO_URL" "$REPO_BRANCH"; then
-            echo "::error::分支 $REPO_BRANCH 不存在于仓库中！"
-            exit 1
-          fi
+    # ======================
+    # 变量空值检查
+    # ======================
+    if [ -z "$REPO_BRANCH" ]; then
+      echo "::error::REPO_BRANCH 未定义或为空值！"
+      echo "可用环境变量:"
+      printenv | grep -E 'REPO_|GITHUB'
+      exit 1
+    fi
 
-          if ! git clone --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" openwrt; then
-            echo "::error::仓库克隆失败！URL: $REPO_URL 分支: $REPO_BRANCH"
-            exit 1
-          fi
+    if [ -z "$REPO_URL" ]; then
+      echo "::error::REPO_URL 未定义或为空值！"
+      exit 1
+    fi
 
-          echo "▼▼▼▼▼ 验证克隆结果 ▼▼▼▼▼"
-          if [ ! -d "openwrt" ]; then
-            echo "::error::目录创建失败！"
-            echo "当前目录内容："
-            ls -la
-            exit 1
-          fi
+    # ======================
+    # 分支存在性验证
+    # ======================
+    echo "▼▼▼▼▼ 远程分支验证 ▼▼▼▼▼"
+    if ! git ls-remote --exit-code --heads "$REPO_URL" "$REPO_BRANCH"; then
+      echo "::error::分支 $REPO_BRANCH 不存在！可用分支列表："
+      git ls-remote --heads "$REPO_URL" | awk -F'/' '{print $3}' | sort -u
+      exit 1
+    fi
 
-          cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
-          
-          echo "▼▼▼▼▼ 仓库信息验证 ▼▼▼▼▼"
-          echo "当前路径：$PWD"
-          echo "目录内容："
-          ls -la
-          echo "最新提交："
-          git log -1 --pretty="作者: %an%n时间: %cd%n内容: %s%n哈希: %H"
-          
-          VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
+    # ======================
+    # 核心克隆操作
+    # ======================
+    echo "▼▼▼▼▼ 开始克隆仓库 ▼▼▼▼▼"
+    echo "执行命令：git clone --depth 1 -b '$REPO_BRANCH' '$REPO_URL' openwrt"
+    
+    if ! git clone --progress --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" openwrt; then
+      echo "::error::克隆操作失败！错误代码：$?"
+      echo "调试信息："
+      echo "仓库协议验证：$(echo "$REPO_URL" | awk -F':' '{print $1}')"
+      echo "分支格式验证：$(echo "$REPO_BRANCH" | tr -d '[:space:]')"
+      exit 1
+    fi
+
+    # ======================
+    # 后置验证
+    # ======================
+    echo "▼▼▼▼▼ 仓库完整性检查 ▼▼▼▼▼"
+    if [ ! -d "openwrt" ]; then
+      echo "::error::目标目录未创建！当前目录内容："
+      ls -la
+      exit 1
+    fi
+
+    cd openwrt || {
+      echo "::error::无法进入openwrt目录！当前路径：$PWD"
+      exit 1
+    }
+
+    echo "▼▼▼▼▼ 仓库元数据验证 ▼▼▼▼▼"
+    echo "当前路径：$PWD"
+    echo "目录大小：$(du -sh .)"
+    echo "分支验证："
+    git branch -a
+
+    # ======================
+    # 内核版本提取
+    # ======================
+    echo "▼▼▼▼▼ 内核版本信息 ▼▼▼▼▼"
+    if [ ! -f "include/kernel-6.12" ]; then
+      echo "::warning::内核版本文件缺失！"
+      VERSION_KERNEL="unknown"
+    else
+      VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[\d.]+' include/kernel-6.12 || echo "parse_error")
+      if [ "$VERSION_KERNEL" = "parse_error" ]; then
+        echo "::warning::内核版本解析失败！文件内容："
+        cat include/kernel-6.12
+        VERSION_KERNEL="invalid"
+      fi
+    fi
+
+    # ======================
+    # 环境变量导出
+    # ======================
+    echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
+    echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
+    echo "✅ 环境变量已设置："
+    echo "OPENWRT_PATH=$PWD"
+    echo "VERSION_KERNEL=$VERSION_KERNEL"
 
       - name: Generate Variables(生成变量)
         run: |
