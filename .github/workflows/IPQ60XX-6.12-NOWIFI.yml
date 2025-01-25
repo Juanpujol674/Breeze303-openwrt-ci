@@ -23,34 +23,31 @@ jobs:
     steps:
       - name: Check Server Performance(检查服务器性能)
         run: |
-          echo "警告⚠"
-          echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
-          echo -e "已知CPU型号（降序）：7763，8370C，8272CL，8171M，E5-2673 \n"
-          echo "--------------------------CPU信息--------------------------"
-          echo "CPU物理数量：$(grep "physical id" /proc/cpuinfo | sort -u | wc -l)"
-          echo -e "CPU核心信息：$(grep -m1 "model name" /proc/cpuinfo | cut -d: -f2 | sed 's/^ //') \n"
-          echo "--------------------------内存信息--------------------------"
+          echo "::group::🖥️ 服务器性能检查"
+          echo "警告：分配的服务器资源可能受限，建议控制插件数量！"
+          echo "CPU型号：$(lscpu | grep 'Model name' | cut -d: -f2 | sed 's/^ *//')"
+          echo "CPU核心数：$(nproc)"
           echo "内存总量：$(free -h | awk '/Mem/{print $2}')"
-          echo "--------------------------硬盘信息--------------------------"
+          echo "存储空间："
           df -hT
+          echo "::endgroup::"
 
       - name: Initialization Environment(初始化环境)
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d/* /usr/local/lib/android || true
+          echo "::group::🧹 环境初始化"
+          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d/* || true
           sudo apt-get -qq update
-          sudo apt-get -qq install $(curl -fsSL https://is.gd/depends_ubuntu_2204)
+          sudo apt-get -qq install $(curl -fsSL is.gd/depends_ubuntu_2204)
           sudo timedatectl set-timezone "$TZ"
-          echo "::group::清理后磁盘空间"
-          df -h
           echo "::endgroup::"
 
       - name: Combine Disks(合并磁盘)
         uses: easimon/maximize-build-space@master
         with:
           swap-size-mb: 1024
-          temp-reserve-mb: 100
+          root-reserve-mb: 1024
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,68 +57,39 @@ jobs:
           REPO_BRANCH: ${{ env.REPO_BRANCH }}
           REPO_URL: ${{ env.REPO_URL }}
         run: |
-          echo "::group::▼▼▼▼▼ 环境验证 ▼▼▼▼▼"
-          echo "工作区路径: $GITHUB_WORKSPACE"
-          echo "REPO_BRANCH: '$REPO_BRANCH'"
-          echo "REPO_URL: '$REPO_URL'"
-          echo "::endgroup::"
+          echo "::group::📦 克隆源代码"
+          # 变量验证
+          echo "▼▼▼ 环境验证 ▼▼▼"
+          echo "仓库分支：'$REPO_BRANCH'"
+          echo "仓库地址：'$REPO_URL'"
 
-          # 强制变量检查
-          if [ -z "$REPO_BRANCH" ]; then
-            echo "::error::REPO_BRANCH 未定义！当前环境变量："
-            printenv | grep -E 'REPO_|GITHUB'
-            exit 1
-          fi
-
-          echo "::group::▼▼▼▼▼ 远程分支验证 ▼▼▼▼▼"
+          # 分支存在性检查
           if ! git ls-remote --exit-code --heads "$REPO_URL" "$REPO_BRANCH"; then
-            echo "::error::分支 $REPO_BRANCH 不存在！可用分支列表："
-            git ls-remote --heads "$REPO_URL" | awk -F'/' '{print $NF}'
+            echo "::error::分支 $REPO_BRANCH 不存在！"
+            git ls-remote --heads "$REPO_URL" | awk -F'/' '{print $3}'
             exit 1
           fi
-          echo "::endgroup::"
 
-          echo "::group::▼▼▼▼▼ 克隆操作 ▼▼▼▼▼"
+          # 执行克隆
           set -x
           git clone --progress --depth 1 -b "${REPO_BRANCH}" "${REPO_URL}" openwrt
-          clone_exit=$?
           set +x
-          if [ $clone_exit -ne 0 ]; then
-            echo "::error::克隆失败！Exit Code: $clone_exit"
-            echo "调试信息："
-            echo "URL协议：$(echo "$REPO_URL" | cut -d: -f1)"
-            exit 1
-          fi
-          echo "::endgroup::"
 
-          echo "::group::▼▼▼▼▼ 仓库验证 ▼▼▼▼▼"
-          cd openwrt || exit 1
-          echo "当前路径：$PWD"
-          echo "目录内容："
-          ls -la
-          echo "分支验证："
-          git branch -a
+          # 仓库验证
+          echo "▼▼▼ 仓库验证 ▼▼▼"
+          cd openwrt && git log -1 --pretty='%h - %s (%an)'
+          echo "OPENWRT_PATH=$(pwd)" >> $GITHUB_ENV
           echo "::endgroup::"
-
-          VERSION_KERNEL=$(awk -F= '/LINUX_KERNEL_HASH/{print $2}' include/kernel-6.12 | cut -d- -f1)
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          echo "VERSION_KERNEL=${VERSION_KERNEL:-unknown}" >> $GITHUB_ENV
 
       - name: Generate Variables(生成变量)
         run: |
-          echo "::group::应用配置文件"
+          echo "::group::⚙️ 生成构建变量"
           cp -v "$CONFIG_FILE" "$OPENWRT_PATH/.config"
-          cd "$OPENWRT_PATH" || exit 1
-          make defconfig
+          cd "$OPENWRT_PATH" && make defconfig
+
+          echo "DEVICE_TARGET=$(awk -F'"' '/CONFIG_TARGET_BOARD/{print $2}' .config)" >> $GITHUB_ENV
+          echo "DEVICE_SUBTARGET=$(awk -F'"' '/CONFIG_TARGET_SUBTARGET/{print $2}' .config)" >> $GITHUB_ENV
           echo "::endgroup::"
-
-          SOURCE_REPO=$(basename -s .git "$REPO_URL")
-          DEVICE_TARGET=$(awk -F'"' '/CONFIG_TARGET_BOARD/{print $2}' .config)
-          DEVICE_SUBTARGET=$(awk -F'"' '/CONFIG_TARGET_SUBTARGET/{print $2}' .config)
-
-          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
       - name: Cache Toolchain(缓存工具链)
         if: env.CACHE_TOOLCHAIN == 'true'
@@ -130,157 +98,105 @@ jobs:
           path: |
             ${{ env.OPENWRT_PATH }}/dl
             ${{ env.OPENWRT_PATH }}/build_dir
-          key: ${{ runner.os }}-toolchain-${{ hashFiles('${{ env.OPENWRT_PATH }}/.config') }}
+          key: ${{ runner.os }}-${{ env.DEVICE_TARGET }}-${{ hashFiles('${{ env.OPENWRT_PATH }}/.config') }}
 
       - name: Install Feeds(安装feeds)
         run: |
-          cd "$OPENWRT_PATH" || exit 1
+          echo "::group::📦 安装软件源"
+          cd "$OPENWRT_PATH"
           ./scripts/feeds update -a
           ./scripts/feeds install -a
+          echo "::endgroup::"
 
-- name: Load Custom Configuration(加载自定义配置)
-  run: |
-    # ======================
-    # 自定义文件迁移
-    # ======================
-    echo "::group::📁 迁移自定义文件 [开始]"
-    CUSTOM_FILES_SRC="$GITHUB_WORKSPACE/files"
-    CUSTOM_FILES_DEST="$OPENWRT_PATH/files"
+      - name: Load Custom Configuration(加载自定义配置)
+        run: |
+          echo "::group::📁 迁移自定义文件"
+          if [ -d "files" ]; then
+            rsync -av --checksum files/ "$OPENWRT_PATH/files/"
+            echo "迁移文件数：$(find "$OPENWRT_PATH/files" -type f | wc -l)"
+          else
+            echo "未检测到自定义文件目录"
+          fi
+          echo "::endgroup::"
 
-    # 验证源目录
-    if [ -d "$CUSTOM_FILES_SRC" ]; then
-      echo "✅ 检测到自定义文件目录"
-      echo "源目录路径: $CUSTOM_FILES_SRC"
-      echo "目录内容大小: $(du -sh $CUSTOM_FILES_SRC | awk '{print $1}')"
-      
-      # 显示目录结构（最多3层）
-      echo "目录结构预览:"
-      find "$CUSTOM_FILES_SRC" -maxdepth 3 -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'
+          echo "::group::🛠️ 执行自定义脚本"
+          script_path="$GITHUB_WORKSPACE/$DIY_SCRIPT"
+          chmod +x "$script_path"
+          
+          cd "$OPENWRT_PATH"
+          set -ex
+          /usr/bin/time -v bash -e "$script_path"
+          echo "::endgroup::"
 
-      # 创建目标目录
-      echo "创建目标目录: $CUSTOM_FILES_DEST"
-      mkdir -p "$CUSTOM_FILES_DEST" || {
-        echo "::error::无法创建目标目录！";
-        exit 1;
-      }
+          echo "::group::✅ 配置最终检查"
+          grep -E 'CONFIG_TARGET|CONFIG_PACKAGE' .config | sort
+          echo "::endgroup::"
 
-      # 执行复制并验证
-      echo "正在同步文件..."
-      rsync -av --checksum "$CUSTOM_FILES_SRC/" "$CUSTOM_FILES_DEST/" || {
-        echo "::error::文件同步失败！";
-        exit 1;
-      }
-
-      # 验证复制结果
-      echo "✅ 同步完成，目标目录验证:"
-      echo "目标目录大小: $(du -sh $CUSTOM_FILES_DEST | awk '{print $1}')"
-      echo "文件数量: $(find "$CUSTOM_FILES_DEST" -type f | wc -l)"
-    else
-      echo "⚠️ 未找到自定义文件目录"
-      echo "当前工作目录内容 ($GITHUB_WORKSPACE):"
-      ls -lAh "$GITHUB_WORKSPACE"
-    fi
-    echo "::endgroup::"
-
-    # ======================
-    # 自定义脚本执行
-    # ======================
-    echo "::group::🛠️ 执行自定义脚本 [开始]"
-    SCRIPT_PATH="$GITHUB_WORKSPACE/$DIY_SCRIPT"
-
-    # 严格验证脚本存在性
-    if [ ! -f "$SCRIPT_PATH" ]; then
-      echo "::error::自定义脚本不存在！路径: $SCRIPT_PATH"
-      echo "可用脚本列表:"
-      find "$GITHUB_WORKSPACE" -type f -name "*.sh"
-      exit 1
-    fi
-
-    # 显示脚本信息
-    echo "脚本绝对路径: $SCRIPT_PATH"
-    echo "脚本基本信息:"
-    file "$SCRIPT_PATH"
-    echo "脚本大小: $(du -h "$SCRIPT_PATH" | cut -f1)"
-    echo "最后修改时间: $(date -r "$SCRIPT_PATH" "+%Y-%m-%d %H:%M:%S")"
-
-    # 脚本内容安全审查
-    echo "脚本内容摘要 (首尾5行):"
-    echo "----- 开始 -----"
-    head -n5 "$SCRIPT_PATH"
-    echo "..."
-    tail -n5 "$SCRIPT_PATH"
-    echo "----- 结束 -----"
-
-    # 权限设置
-    echo "设置执行权限..."
-    chmod -v +x "$SCRIPT_PATH" || {
-      echo "::error::权限设置失败！";
-      exit 1;
-    }
-
-    # 环境准备
-    echo "当前工作目录: $PWD"
-    echo "切换到OpenWrt目录: $OPENWRT_PATH"
-    cd "$OPENWRT_PATH" || {
-      echo "::error::无法进入OpenWrt目录！";
-      exit 1;
-    }
-
-    # 执行前快照
-    echo "执行前目录状态:"
-    git status --short || true
-    echo "磁盘使用情况:"
-    df -h .
-
-    # 执行脚本（严格模式）
-    echo "执行脚本..."
-    set -x  # 开启命令回显
-    /usr/bin/time -v bash -e "$SCRIPT_PATH"
-    EXIT_CODE=$?
-    set +x
-
-    # 执行后验证
-    if [ $EXIT_CODE -ne 0 ]; then
-      echo "::error::脚本执行失败！退出码: $EXIT_CODE"
-      echo "最后10条日志:"
-      tail -n10 "$OPENWRT_PATH/build.log" || true
-      exit $EXIT_CODE
-    fi
-
-    # 执行后快照
-    echo "✅ 脚本执行成功"
-    echo "执行后变更统计:"
-    git diff --stat || true
-    echo "磁盘使用情况:"
-    df -h .
-    echo "::endgroup::"
-
-    # ======================
-    # 最终验证
-    # ======================
-    echo "::group::🔍 最终配置验证"
-    echo "当前配置文件: $OPENWRT_PATH/.config"
-    echo "配置文件大小: $(du -h "$OPENWRT_PATH/.config" | cut -f1)"
-    echo "关键配置项:"
-    grep -E 'CONFIG_TARGET|CONFIG_PACKAGE' "$OPENWRT_PATH/.config" | sort
-    echo "::endgroup::"
       - name: Download DL Package(下载DL软件包)
         run: |
-          cd "$OPENWRT_PATH" || exit 1
+          echo "::group::📥 下载依赖包"
+          cd "$OPENWRT_PATH"
           make -j8 download
           find dl -size -1k -delete
+          echo "剩余dl包数量：$(find dl -type f | wc -l)"
+          echo "::endgroup::"
 
       - name: Compile Firmware(编译固件)
         timeout-minutes: 120
         run: |
-          cd "$OPENWRT_PATH" || exit 1
-          echo "可用线程数：$(nproc)"
+          echo "::group::🔥 开始编译"
+          cd "$OPENWRT_PATH"
+          echo "使用线程数：$(($(nproc)+1))"
           make -j$(($(nproc)+1)) || make -j1 V=s
           echo "status=success" >> $GITHUB_OUTPUT
+          echo "DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+          echo "::endgroup::"
 
-      - name: Upload Artifact(发布成果)
+      - name: Organize Files(整理文件)
         if: success()
+        run: |
+          echo "::group::📦 整理构建成果"
+          cd "$OPENWRT_PATH/bin/targets"/*/*
+          cp "$OPENWRT_PATH/.config" build.config
+          mkdir -p packages && mv ../packages/*/*.ipk packages/ || true
+          tar -zcf Packages.tar.gz packages
+          echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
+          echo "::endgroup::"
+
+      - name: Upload Firmware To Artifact(上传测试版)
+        if: env.FIRMWARE_RELEASE != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.FIRMWARE_TAG }}-${{ env.VERSION_KERNEL }}
-          path: ${{ env.OPENWRT_PATH }}/bin/targets/**/*
+          name: ${{ env.FIRMWARE_TAG }}-${{ env.DEVICE_TARGET }}-${{ env.DATE }}
+          path: ${{ env.FIRMWARE_PATH }}
+
+      - name: Upload Firmware To Release(发布正式版)
+        if: env.FIRMWARE_RELEASE == 'true'
+        uses: softprops/action-gh-release@v2  # 建议升级到v2版本
+        with:
+          name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+          allowUpdates: false
+          tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: ${{ env.FIRMWARE_PATH }}/*
+          files: |
+            ${{ env.FIRMWARE_PATH }}/*.bin
+            ${{ env.FIRMWARE_PATH }}/Packages.tar.gz
+            ${{ env.FIRMWARE_PATH }}/build.config
+          body: |
+            **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
+            ### 📒 固件信息(无WIFI)
+            - 🚀 内核版本：${{ env.VERSION_KERNEL }}
+            - 📅 编译日期：${{ env.DATE }}
+            - 🖥️ 目标平台：${{ env.DEVICE_TARGET }} (${{ env.DEVICE_SUBTARGET }})
+            - 📎 源码仓库：[${{ env.REPO_BRANCH }}分支](${{ env.REPO_URL }}/tree/${{ env.REPO_BRANCH }})
+            
+            ### 🔧 默认配置
+            - 🌐 管理地址：192.168.1.1
+            - 🔑 管理员密码：password
+            - 📦 包含软件包：$(zcat ${{ env.FIRMWARE_PATH }}/Packages.tar.gz | grep Package: | wc -l)个
+            
+            ### 📋 版本记录
+            ${{ env.VERSION_INFO }}
+
+            > 校验信息：$(sha256sum ${{ env.FIRMWARE_PATH }}/*.bin | awk '{print $1}')
