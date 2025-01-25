@@ -1,10 +1,9 @@
-
 name: IPQ60XX-6.12-NOWIFI
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: 0 19 * * *
+    - cron: "0 18 * * *"  # UTC时间18:00（北京时间凌晨2点）
 
 env:
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
@@ -41,8 +40,8 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          docker rmi $(docker images -q)
-          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY
+          docker rmi $(docker images -q) || true
+          sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY || true
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y update
           sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
@@ -63,27 +62,50 @@ jobs:
 
       - name: Clone Source Code(克隆源代码)
         run: |
-          df -hT $GITHUB_WORKSPACE
-          git clone --depth 1 -b $REPO_BRANCH $REPO_URL openwrt
-          cd openwrt --tags
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
-          VERSION_INFO=$(git show -s --date=short --format="作者: %an<br/>时间: %cd<br/>内容: %s<br/>hash: %H")
-          echo "VERSION_INFO=$VERSION_INFO" >> $GITHUB_ENV
+          echo "▼▼▼▼▼ 工作区路径验证 ▼▼▼▼▼"
+          df -hT "$GITHUB_WORKSPACE"
+          ls -la "$GITHUB_WORKSPACE"
+
+          echo "▼▼▼▼▼ 开始克隆仓库 ▼▼▼▼▼"
+          if ! git clone --depth 1 -b "$REPO_BRANCH" "$REPO_URL" openwrt; then
+            echo "::error::仓库克隆失败！URL: $REPO_URL 分支: $REPO_BRANCH"
+            exit 1
+          fi
+
+          echo "▼▼▼▼▼ 验证克隆结果 ▼▼▼▼▼"
+          if [ ! -d "openwrt" ]; then
+            echo "::error::目录创建失败！"
+            echo "当前目录内容："
+            ls -la
+            exit 1
+          fi
+
+          cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
+          
+          echo "▼▼▼▼▼ 仓库信息验证 ▼▼▼▼▼"
+          echo "当前路径：$PWD"
+          echo "目录内容："
+          ls -la
+          echo "最新提交："
+          git log -1 --pretty="作者: %an%n时间: %cd%n内容: %s%n哈希: %H"
+          
           VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
       - name: Generate Variables(生成变量)
         run: |
-          cp $CONFIG_FILE $OPENWRT_PATH/.config
-          cd $OPENWRT_PATH
+          cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+          cd "$OPENWRT_PATH" || exit 1
           make defconfig > /dev/null 2>&1
-          SOURCE_REPO="$(echo $REPO_URL | awk -F '/' '{print $(NF)}')"
+          SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-          DEVICE_TARGET=$(cat .config | grep CONFIG_TARGET_BOARD | awk -F '"' '{print $2}')
+          DEVICE_TARGET=$(grep 'CONFIG_TARGET_BOARD=' .config | awk -F '"' '{print $2}')
           echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          DEVICE_SUBTARGET=$(cat .config | grep CONFIG_TARGET_SUBTARGET | awk -F '"' '{print $2}')
+          DEVICE_SUBTARGET=$(grep 'CONFIG_TARGET_SUBTARGET=' .config | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
+      # 后续步骤保持不变（可根据需要补充完整）
       - name: Cache Toolchain(缓存工具链)
         if: env.CACHE_TOOLCHAIN == 'true'
         uses: HiGarfield/cachewrtbuild@main
@@ -94,17 +116,19 @@ jobs:
 
       - name: Install Feeds(安装feeds)
         run: |
-          cd $OPENWRT_PATH
+          cd "$OPENWRT_PATH" || exit 1
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
       - name: Load Custom Configuration(加载自定义配置)
         run: |
-          [ -e files ] && mv files $OPENWRT_PATH/files
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE $OPENWRT_PATH/.config
-          chmod +x $DIY_SCRIPT
-          cd $OPENWRT_PATH
-          bash $GITHUB_WORKSPACE/$DIY_SCRIPT
+          [ -e files ] && mv files "$OPENWRT_PATH/files"
+          [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+          chmod +x "$DIY_SCRIPT"
+          cd "$OPENWRT_PATH" || exit 1
+          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
+
+      # ... 其他步骤保持原有结构不变 ...
 
       - name: Download DL Package(下载DL软件包)
         run: |
