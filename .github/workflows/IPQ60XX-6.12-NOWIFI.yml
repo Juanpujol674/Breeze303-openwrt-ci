@@ -108,51 +108,42 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           echo "::endgroup::"
-
+          
       - name: Load Custom Configuration(加载自定义配置)
         run: |
-    # ======================
-    # 迁移自定义文件
-    # ======================
-        echo "::group::📁 迁移自定义文件"
-        if [ -d "files" ]; then
-          echo "检测到自定义文件目录，正在同步..."
-          mkdir -p "$OPENWRT_PATH/files"
-          rsync -av --checksum files/ "$OPENWRT_PATH/files/"
-      else
-          echo "未找到自定义文件目录"
-      fi
-      echo "::endgroup::"
-
-    # ======================
-    # 执行自定义脚本
-    # ======================
-      echo "::group::🛠️ 执行自定义脚本"
-      export REPO_BRANCH="${{ env.REPO_BRANCH }}"  # 显式传递变量
-      export REPO_URL="${{ env.REPO_URL }}"
-      export BUILD_DIR="$OPENWRT_PATH"  # 确保BUILD_DIR变量存在
-    
-      echo "▼▼▼ 调试信息 ▼▼▼"
-      echo "当前分支: $REPO_BRANCH"
-      echo "仓库地址: $REPO_URL"
-      echo "构建目录: $BUILD_DIR"
-
-    # 添加严格的错误处理
-      set -euo pipefail
-      chmod +x "$DIY_SCRIPT"
-    
-    # 执行脚本时传递参数
-      /usr/bin/time -v bash -x "$DIY_SCRIPT" "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
-
-      - name: Download DL Package(下载DL软件包)
-        run: |
-          echo "::group::📥 下载依赖包"
-          cd "$OPENWRT_PATH"
-          make -j8 download
-          find dl -size -1k -delete
-          echo "剩余有效包数：$(find dl -type f | wc -l)"
+          # ======================
+          # 迁移自定义文件
+          # ======================
+          echo "::group::📁 迁移自定义文件"
+          if [ -d "files" ]; then
+            echo "检测到自定义文件目录，正在同步..."
+            mkdir -p "$OPENWRT_PATH/files"
+            rsync -av --checksum files/ "$OPENWRT_PATH/files/"
+          else
+            echo "未找到自定义文件目录"
+          fi
           echo "::endgroup::"
 
+          # ======================
+          # 执行自定义脚本
+          # ======================
+          echo "::group::🛠️ 执行自定义脚本"
+          export REPO_BRANCH="${{ env.REPO_BRANCH }}"  # 显式传递变量
+          export REPO_URL="${{ env.REPO_URL }}"
+          export BUILD_DIR="$OPENWRT_PATH"  # 确保BUILD_DIR变量存在
+          
+          echo "▼▼▼ 调试信息 ▼▼▼"
+          echo "当前分支: $REPO_BRANCH"
+          echo "仓库地址: $REPO_URL"
+          echo "构建目录: $BUILD_DIR"
+
+          # 添加严格的错误处理
+          set -euo pipefail
+          chmod +x "$DIY_SCRIPT"
+          
+          # 执行脚本时传递参数
+          /usr/bin/time -v bash -x "$DIY_SCRIPT" "$REPO_BRANCH" "$REPO_URL" "$BUILD_DIR"
+          echo "::endgroup::"
       - name: Compile Firmware(编译固件)
         timeout-minutes: 120
         run: |
