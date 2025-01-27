@@ -198,7 +198,7 @@ jobs:
 
       - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-        uses: ncipollo/release-action@v2  # 必须用 v2
+        uses: softprops/action-gh-release@v2  # 必须用 v2
         with:
             name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
             tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}     # 示例：ipq60xx-6.12-M2_Nowifi-20240615-123456
