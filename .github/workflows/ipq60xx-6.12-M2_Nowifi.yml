@@ -16,6 +16,7 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: ipq60xx-6.12-M2_Nowifi
   TZ: Asia/Shanghai
+  FILE_DATE: $(date +"%Y%m%d-%H%M%S")  # 格式示例：20240615-123456
 
 jobs:
   Build:
@@ -150,7 +151,9 @@ jobs:
           fi
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-          echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+          echo "FILE_DATE=$(date +"%Y%m%d-%H%M%S")" >> $GITHUB_ENV  # 精确到秒！
+        
+
 
       - name: Check Space Usage(检查空间使用情况)
         if: (!cancelled())
@@ -195,23 +198,24 @@ jobs:
 
       - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-        uses: ncipollo/release-action@v1
+        uses: ncipollo/release-action@v2  # 必须用 v2
         with:
-          name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-          allowUpdates: false  # 修改为false，确保不覆盖旧固件
-          tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}  # 添加日期作为tag后缀，确保每次发布都是唯一的
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ env.FIRMWARE_PATH }}/*
-          body: |
-            **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
-            ### 📒 固件信息(无WIFI)
-            - 无WIFI带有线NSS的6.12内核固件
-            - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
-            - ⚽ 固件源码: ${{ env.REPO_URL }}
-            - 💝 源码分支: ${{ env.REPO_BRANCH }}
-            - 🌐 默认地址: 192.168.1.1
-            - 🔑 默认密码: password
-            ### 🧊 固件版本
-            - 固件内核版本：${{ env.VERSION_KERNEL }}
-            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-            - ${{ env.VERSION_INFO }}
+            name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+            tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}     # 示例：ipq60xx-6.12-M2_Nowifi-20240615-123456
+            token: ${{ secrets.GITHUB_TOKEN }}
+            artifacts: ${{ env.FIRMWARE_PATH }}/*
+            updateOnlyUnreleased: true  # 关键防御！阻止覆盖已发布的 Release， 防止误改已发布的 Release
+            artifactErrorsFailBuild: false  # 允许附件上传失败，不中断流程
+            body: |
+   	          **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
+              ### 📒 固件信息(无WIFI)
+              - 无WIFI带有线NSS的6.12内核固件
+              - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
+              - ⚽ 固件源码: ${{ env.REPO_URL }}
+              - 💝 源码分支: ${{ env.REPO_BRANCH }}
+              - 🌐 默认地址: 192.168.1.1
+              - 🔑 默认密码: password
+              ### 🧊 固件版本
+              - 固件内核版本：${{ env.VERSION_KERNEL }}
+              - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+              - ${{ env.VERSION_INFO }}
