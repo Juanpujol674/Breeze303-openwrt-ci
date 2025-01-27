@@ -1,4 +1,4 @@
-name: IPQ60XX-6.12-NOWIFI
+name: ipq60xx-6.12-M2_Nowifi
 
 on:
   workflow_dispatch:
