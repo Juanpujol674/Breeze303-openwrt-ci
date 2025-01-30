@@ -106,13 +106,13 @@ jobs:
           DEVICE_SUBTARGET=$(grep 'CONFIG_TARGET_SUBTARGET=' .config | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-      # 后续步骤保持不变（可根据需要补充完整）
       - name: Cache Toolchain(缓存工具链)
         if: env.CACHE_TOOLCHAIN == 'true'
         uses: HiGarfield/cachewrtbuild@main
         with:
           ccache: false
-          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}
+    # 添加FIRMWARE_TAG确保唯一性
+          mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FIRMWARE_TAG }}
           prefix: ${{ env.OPENWRT_PATH }}
 
       - name: Install Feeds(安装feeds)
@@ -124,12 +124,11 @@ jobs:
       - name: Load Custom Configuration(加载自定义配置)
         run: |
           [ -e files ] && mv files "$OPENWRT_PATH/files"
-          [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
+          # 注释或删除下一行，避免覆盖.config
+          # [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           chmod +x "$DIY_SCRIPT"
           cd "$OPENWRT_PATH" || exit 1
           bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
-
-      # ... 其他步骤保持原有结构不变 ...
 
       - name: Download DL Package(下载DL软件包)
         run: |
