@@ -197,14 +197,11 @@ jobs:
 
       - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-        uses: softprops/action-gh-release@v2  # 必须用 v2
+        uses: softprops/action-gh-release@v2
         with:
             name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-            tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}     # 示例：ipq60xx-6.12-M2_Nowifi-20240615-123456
-            token: ${{ secrets.GITHUB_TOKEN }}
-            artifacts: ${{ env.FIRMWARE_PATH }}/*
-            updateOnlyUnreleased: true  # 关键防御！阻止覆盖已发布的 Release， 防止误改已发布的 Release
-            artifactErrorsFailBuild: false  # 允许附件上传失败，不中断流程
+            tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
+            files: ${{ env.FIRMWARE_PATH }}/*
             body: |
               **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
               ### 📒 固件信息(无WIFI)
@@ -218,3 +215,6 @@ jobs:
               - 固件内核版本：${{ env.VERSION_KERNEL }}
               - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
               - ${{ env.VERSION_INFO }}
+            draft: true  # 创建为草稿，需要手动发布
+            prerelease: false
+            token: ${{ secrets.GITHUB_TOKEN }}
