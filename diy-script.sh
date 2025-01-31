@@ -194,12 +194,12 @@ echo "CONFIG_PACKAGE_luci-app-lucky=y" >> ./.config
 # echo "CONFIG_PACKAGE_kmod-tcp-bbr=y" >> ./.config
 # echo "CONFIG_DEFAULT_tcp_bbr=y" >> ./.config
 # docker(只能集成)
-echo "CONFIG_PACKAGE_luci-app-dockerman=y" >> ./.config
+#echo "CONFIG_PACKAGE_luci-app-dockerman=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-mihomo=y" >> ./.config
 #echo "CONFIG_PACKAGE_luci-app-unblockmusic=y" >> ./.config
 echo "CONFIG_PACKAGE_luci-app-gecoosac=y" >> ./.config
-echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
-echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
+#echo "CONFIG_PACKAGE_luci-app-quickstart=y" >> ./.config
+#echo "CONFIG_PACKAGE_luci-app-netspeedtest=y" >> ./.config
 
 fix_miniupmpd() {
     # 从 miniupnpd 的 Makefile 中提取 PKG_HASH 的值
