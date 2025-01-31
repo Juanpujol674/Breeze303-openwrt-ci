@@ -16,14 +16,14 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: ipq60xx-6.12-M2_Nowifi
   TZ: Asia/Shanghai
-  FILE_DATE: $(date +"%Y%m%d-%H%M%S")  # 格式示例：20240615-123456
+  FILE_DATE: $(date +"%Y%m%d-%H%M%S")
 
 jobs:
   Build:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Check Server Performance(检查服务器性能)
+      - name: Check Server Performance
         run: |
           echo "警告⚠"
           echo "分配的服务器性能有限，若选择的插件过多，务必注意CPU性能！"
@@ -37,7 +37,7 @@ jobs:
           echo "--------------------------硬盘信息--------------------------"
           echo "硬盘数量：$(ls /dev/sd* | grep -v [1-9] | wc -l)" && df -hT
 
-      - name: Initialization Environment(初始化环境)
+      - name: Initialization Environment
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
@@ -51,7 +51,7 @@ jobs:
           sudo -E apt-get -y clean
           sudo timedatectl set-timezone "$TZ"
 
-      - name: Combine Disks(合并磁盘)
+      - name: Combine Disks
         uses: easimon/maximize-build-space@master
         with:
           swap-size-mb: 1024
@@ -61,7 +61,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@main
 
-      - name: Clone Source Code(克隆源代码)
+      - name: Clone Source Code
         run: |
           echo "▼▼▼▼▼ 工作区路径验证 ▼▼▼▼▼"
           df -hT "$GITHUB_WORKSPACE"
@@ -73,28 +73,19 @@ jobs:
             exit 1
           fi
 
-          echo "▼▼▼▼▼ 验证克隆结果 ▼▼▼▼▼"
-          if [ ! -d "openwrt" ]; then
-            echo "::error::目录创建失败！"
-            echo "当前目录内容："
-            ls -la
-            exit 1
-          fi
-
           cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
-          
-          echo "▼▼▼▼▼ 仓库信息验证 ▼▼▼▼▼"
-          echo "当前路径：$PWD"
-          echo "目录内容："
-          ls -la
-          echo "最新提交："
-          git log -1 --pretty="作者: %an%n时间: %cd%n内容: %s%n哈希: %H"
           
           VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
-      - name: Generate Variables(生成变量)
+      - name: Clean Previous Build
+        if: env.CACHE_TOOLCHAIN == 'true'
+        run: |
+          cd "$OPENWRT_PATH"
+          make clean
+
+      - name: Generate Variables
         run: |
           cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           cd "$OPENWRT_PATH" || exit 1
@@ -106,31 +97,38 @@ jobs:
           DEVICE_SUBTARGET=$(grep 'CONFIG_TARGET_SUBTARGET=' .config | awk -F '"' '{print $2}')
           echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
-      - name: Cache Toolchain(缓存工具链)
+      - name: Cache Toolchain
         if: env.CACHE_TOOLCHAIN == 'true'
         uses: HiGarfield/cachewrtbuild@main
         with:
           ccache: false
-    # 添加FIRMWARE_TAG确保唯一性
           mixkey: ${{ env.SOURCE_REPO }}-${{ env.REPO_BRANCH }}-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FIRMWARE_TAG }}
           prefix: ${{ env.OPENWRT_PATH }}
 
-      - name: Install Feeds(安装feeds)
+      - name: Install Feeds
         run: |
           cd "$OPENWRT_PATH" || exit 1
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Load Custom Configuration(加载自定义配置)
+      - name: Load Custom Configuration
         run: |
           [ -e files ] && mv files "$OPENWRT_PATH/files"
-          # 注释或删除下一行，避免覆盖.config
-          # [ -e "$CONFIG_FILE" ] && mv "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           chmod +x "$DIY_SCRIPT"
           cd "$OPENWRT_PATH" || exit 1
           bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
 
-      - name: Download DL Package(下载DL软件包)
+          # 强制覆盖自定义配置
+          echo "应用自定义配置..."
+          cp "$GITHUB_WORKSPACE/configs/ipq60xx-6.12-M2_Nowifi.config" .config
+          make defconfig
+
+          # 验证关键配置
+          echo "验证配置："
+          grep "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_zn_m2" .config || echo "::error::设备配置丢失！"
+          grep "CONFIG_PACKAGE_luci-app-mihomo=y" .config || echo "::error::Mihomo插件未启用！"
+
+      - name: Download DL Package
         run: |
           cd $OPENWRT_PATH
           make defconfig
@@ -138,7 +136,7 @@ jobs:
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
-      - name: Compile Firmware(开始编译固件)
+      - name: Compile Firmware
         id: compile
         run: |
           cd $OPENWRT_PATH
@@ -150,52 +148,33 @@ jobs:
           fi
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-          echo "FILE_DATE=$(date +"%Y%m%d-%H%M%S")" >> $GITHUB_ENV  # 精确到秒！
-        
+          echo "FILE_DATE=$(date +"%Y%m%d-%H%M%S")" >> $GITHUB_ENV
 
-
-      - name: Check Space Usage(检查空间使用情况)
+      - name: Check Space Usage
         if: (!cancelled())
         run: df -hT
 
-      - name: Organize Files(整理文件)
+      - name: Organize Files
         if: steps.compile.outputs.status == 'success'
         run: |
-          # 进入 bin/targets 目录
           cd $OPENWRT_PATH/bin/targets/*/*
-
-          # 打印当前目录结构（调试用）
-          echo "Current directory:"
-          ls -R
-
-          # 复制 .config 文件
           cp $OPENWRT_PATH/.config build.config
-
-          # 移动软件包文件（根据实际扩展名调整）
           mkdir -p packages
           if ls $OPENWRT_PATH/bin/packages/*/*/*.apk > /dev/null 2>&1; then
             mv -f $OPENWRT_PATH/bin/packages/*/*/*.apk packages
-          else
-            echo "No .apk files found in packages directory."
           fi
-
-          # 打包 packages 目录
           tar -zcf Packages.tar.gz packages
-
-          # 清理不必要的文件
           rm -rf packages feeds.buildinfo version.buildinfo
-
-          # 设置 FIRMWARE_PATH 环境变量
           echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
 
-      - name: Upload Firmware To Artifact(将固件上传到Artifact)
+      - name: Upload Firmware To Artifact
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE != 'true'
         uses: actions/upload-artifact@main
         with:
           name: ${{ env.SOURCE_REPO }}-firmware-${{ env.DEVICE_TARGET }}-${{ env.DEVICE_SUBTARGET }}-${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE_PATH }}
 
-      - name: Upload Firmware To Release(发布固件)
+      - name: Upload Firmware To Release
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
@@ -215,6 +194,6 @@ jobs:
               - 固件内核版本：${{ env.VERSION_KERNEL }}
               - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
               - ${{ env.VERSION_INFO }}
-            draft: true  # 创建为草稿，需要手动发布
+            draft: true
             prerelease: false
             token: ${{ secrets.GITHUB_TOKEN }}
