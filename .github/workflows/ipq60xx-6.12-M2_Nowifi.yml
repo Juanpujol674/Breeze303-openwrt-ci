@@ -16,7 +16,6 @@ env:
   FIRMWARE_RELEASE: true
   FIRMWARE_TAG: ipq60xx-6.12-M2_Nowifi
   TZ: Asia/Shanghai
-  FILE_DATE: $(date +"%Y%m%d-%H%M%S")
 
 jobs:
   Build:
@@ -46,24 +45,11 @@ jobs:
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y update
           sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
-          sudo -E apt-get -y install libncurses-dev ncurses-term  # 新增
+          sudo -E apt-get -y install libncurses-dev ncurses-term
           sudo -E systemctl daemon-reload
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get -y clean
           sudo timedatectl set-timezone "$TZ"
-
-      - name: Generate Variables
-        run: |
-          cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
-          cd "$OPENWRT_PATH" || exit 1
-          export TERM=dumb  # 设置终端类型
-          make defconfig > /dev/null 2>&1 || true
-          SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
-          echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
-          DEVICE_TARGET=$(grep 'CONFIG_TARGET_BOARD=' .config | awk -F '"' '{print $2}')
-          echo "DEVICE_TARGET=$DEVICE_TARGET" >> $GITHUB_ENV
-          DEVICE_SUBTARGET=$(grep 'CONFIG_TARGET_SUBTARGET=' .config | awk -F '"' '{print $2}')
-          echo "DEVICE_SUBTARGET=$DEVICE_SUBTARGET" >> $GITHUB_ENV
 
       - name: Combine Disks
         uses: easimon/maximize-build-space@master
@@ -89,6 +75,11 @@ jobs:
 
           cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
           
+          # 删除可能引入额外插件的第三方包
+          rm -rf feeds/small8/luci-app-dockerman
+          rm -rf feeds/small8/luci-app-netspeedtest
+          rm -rf feeds/luci/applications/luci-app-samba4
+
           VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
           echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
@@ -98,11 +89,13 @@ jobs:
         run: |
           cd "$OPENWRT_PATH"
           make clean
+          rm -rf tmp/ .config.old feeds/
 
       - name: Generate Variables
         run: |
           cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           cd "$OPENWRT_PATH" || exit 1
+          export TERM=dumb
           make defconfig > /dev/null 2>&1
           SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
@@ -132,15 +125,27 @@ jobs:
           cd "$OPENWRT_PATH" || exit 1
           bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
 
-          # 强制覆盖自定义配置
+          # 强制覆盖并验证配置
           echo "应用自定义配置..."
-          cp "$GITHUB_WORKSPACE/configs/ipq60xx-6.12-M2_Nowifi.config" .config
+          cp -f "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig
 
-          # 验证关键配置
-          echo "验证配置："
-          grep "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_zn_m2" .config || echo "::error::设备配置丢失！"
-          grep "CONFIG_PACKAGE_luci-app-mihomo=y" .config || echo "::error::Mihomo插件未启用！"
+          # 严格验证插件禁用状态
+          forbidden_plugins=(
+            "luci-app-dockerman"
+            "luci-app-netspeedtest"
+            "luci-app-samba4"
+          )
+          for plugin in "${forbidden_plugins[@]}"; do
+            if grep "CONFIG_PACKAGE_${plugin}=y" .config; then
+              echo "::error::检测到被禁用的插件 ${plugin} 仍被启用！"
+              exit 1
+            fi
+          done
+
+          # 验证必要配置
+          grep "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_DEVICE_zn_m2" .config || (echo "::error::设备配置丢失！" && exit 1)
+          grep "CONFIG_PACKAGE_luci-app-mihomo=y" .config || (echo "::error::Mihomo插件未启用！" && exit 1)
 
       - name: Download DL Package
         run: |
@@ -162,6 +167,7 @@ jobs:
           fi
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
+          # 动态生成时间戳
           echo "FILE_DATE=$(date +"%Y%m%d-%H%M%S")" >> $GITHUB_ENV
 
       - name: Check Space Usage
@@ -192,14 +198,14 @@ jobs:
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
-            name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
+            name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
             tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
             files: ${{ env.FIRMWARE_PATH }}/*
             body: |
               **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
               ### 📒 固件信息(无WIFI)
               - 无WIFI带有线NSS的6.12内核固件
-              - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
+              - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 无WIFI无USB OpenWrt 固件
               - ⚽ 固件源码: ${{ env.REPO_URL }}
               - 💝 源码分支: ${{ env.REPO_BRANCH }}
               - 🌐 默认地址: 192.168.1.1
