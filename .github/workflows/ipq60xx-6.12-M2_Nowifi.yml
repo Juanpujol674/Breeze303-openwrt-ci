@@ -6,6 +6,7 @@ on:
     - cron: "0 18 * * *"  # UTC时间18:00（北京时间凌晨2点）
 
 env:
+  TERM: dumb  # 关键修复
   REPO_URL: https://github.com/LiBwrt/openwrt-6.x.git
   REPO_BRANCH: kernel-6.12
   CONFIG_FILE: configs/ipq60xx-6.12-M2_Nowifi.config
@@ -20,7 +21,9 @@ env:
 jobs:
   Build:
     runs-on: ubuntu-22.04
-
+    env:
+      TERM: dumb  # 覆盖全局确保生效
+      
     steps:
       - name: Check Server Performance
         run: |
@@ -45,6 +48,10 @@ jobs:
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y update
           sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
+          libev-dev \         # 新增
+          libpam0g-dev \      # 新增
+          liblzma-dev \       # 新增
+          libsnmp-dev         # 新增
           sudo -E apt-get -y install libncurses-dev ncurses-term
           sudo -E systemctl daemon-reload
           sudo -E apt-get -y autoremove --purge
@@ -120,10 +127,10 @@ jobs:
 
       - name: Load Custom Configuration
         run: |
-          [ -e files ] && mv files "$OPENWRT_PATH/files"
-          chmod +x "$DIY_SCRIPT"
           cd "$OPENWRT_PATH" || exit 1
-          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
+          export TERM=dumb  # 显式覆盖
+          cp -f "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
+          make defconfig
 
           # 强制覆盖并验证配置
           echo "应用自定义配置..."
