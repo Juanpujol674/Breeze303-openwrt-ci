@@ -2,8 +2,8 @@ name: ipq60xx-6.12-M2_Nowifi
 
 on:
   workflow_dispatch:
-  schedule:
-    #- cron: "0 18 * * *"  # UTC时间18:00（北京时间凌晨2点）
+  #schedule:
+    - cron: "0 18 * * *"  # UTC时间18:00（北京时间凌晨2点）
 
 env:
   TERM: dumb  # 关键修复
