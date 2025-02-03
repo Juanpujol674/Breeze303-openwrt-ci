@@ -221,6 +221,7 @@ jobs:
               - 固件内核版本：${{ env.VERSION_KERNEL }}
               - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
               - ${{ env.VERSION_INFO }}
-            draft: true
-            prerelease: false
             token: ${{ secrets.GITHUB_TOKEN }}
+            replace: false  # 不允许覆盖已有Release
+            draft: false    # 直接发布，非草稿
+            prerelease: false # 非预发布版本
