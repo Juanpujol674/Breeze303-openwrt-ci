@@ -150,7 +150,8 @@ jobs:
           fi
           echo "status=success" >> $GITHUB_OUTPUT
           echo "DATE=$(date +"%Y-%m-%d %H:%M:%S")" >> $GITHUB_ENV
-          echo "FILE_DATE=$(date +"%Y.%m.%d")" >> $GITHUB_ENV
+          # 修改为自定义日期格式：2024,May30-143015
+          echo "FILE_DATE=$(date "+%Y,%b%d-%H%M%S")" >> $GITHUB_ENV  # 示例输出：2024,May30-143015
 
       - name: Check Space Usage(检查空间使用情况)
         if: (!cancelled())
@@ -195,23 +196,29 @@ jobs:
 
       - name: Upload Firmware To Release(发布固件)
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-        uses: ncipollo/release-action@v1
+        uses: softprops/action-gh-release@v2
         with:
-          name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}
-          allowUpdates: false  # 修改为false，确保不覆盖旧固件
-          tag: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}  # 添加日期作为tag后缀，确保每次发布都是唯一的
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ env.FIRMWARE_PATH }}/*
+    # 新Action参数配置
+          tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}  # 标签格式：IPQ60XX-6.12-NOWIFI-2024,May30-143015
+          name: R${{ env.DATE }} for ${{ env.FIRMWARE_TAG }}      # Release名称保持不变
           body: |
-            **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
-            ### 📒 固件信息(无WIFI)
-            - 无WIFI带有线NSS的6.12内核固件
-            - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
-            - ⚽ 固件源码: ${{ env.REPO_URL }}
-            - 💝 源码分支: ${{ env.REPO_BRANCH }}
-            - 🌐 默认地址: 192.168.1.1
-            - 🔑 默认密码: password
-            ### 🧊 固件版本
-            - 固件内核版本：${{ env.VERSION_KERNEL }}
-            - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
-            - ${{ env.VERSION_INFO }}
+           **This is OpenWrt Firmware for ${{ env.FIRMWARE_TAG }}**
+           ### 📒 固件信息(无WIFI)
+           - 无WIFI带有线NSS的6.12内核固件
+           - 💻 这是 ${{ env.FIRMWARE_TAG }} 平台使用的 OpenWrt 固件
+           - ⚽ 固件源码: ${{ env.REPO_URL }}
+           - 💝 源码分支: ${{ env.REPO_BRANCH }}
+           - 🌐 默认地址: 192.168.1.1
+           - 🔑 默认密码: password
+           ### 🧊 固件版本
+           - 固件内核版本：${{ env.VERSION_KERNEL }}
+           - 固件编译前最后一次➦[主源码](${{ env.REPO_URL }})更新记录
+           - ${{ env.VERSION_INFO }}
+          files: |
+            ${{ env.FIRMWARE_PATH }}/*.bin
+            ${{ env.FIRMWARE_PATH }}/*.config
+            ${{ env.FIRMWARE_PATH }}/*.tar.gz
+          token: ${{ secrets.GITHUB_TOKEN }}
+          replace: false  # 不允许覆盖已有Release
+          draft: false    # 直接发布，非草稿
+          prerelease: false # 非预发布版本
