@@ -140,6 +140,9 @@ jobs:
           echo "应用自定义配置..."
           cp -f "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig
+          chmod +x "$DIY_SCRIPT"
+          cd "$OPENWRT_PATH" || exit 1
+          bash "$GITHUB_WORKSPACE/$DIY_SCRIPT"
 
           # 严格验证插件禁用状态
           forbidden_plugins=(
