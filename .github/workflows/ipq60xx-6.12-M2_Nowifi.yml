@@ -23,7 +23,8 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       TERM: dumb  # 覆盖全局确保生效
-      
+      OPENWRT_PATH: ${{ github.workspace }}/openwrt  # 显式定义 OpenWrt 路径
+
     steps:
       - name: Check Server Performance
         run: |
@@ -80,7 +81,7 @@ jobs:
             exit 1
           fi
 
-          cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
+          cd "$OPENWRT_PATH" || (echo "::error::进入目录失败" && exit 1)
           
           # 删除可能引入额外插件的第三方包
           rm -rf feeds/small8/luci-app-dockerman
@@ -88,7 +89,6 @@ jobs:
           rm -rf feeds/luci/applications/luci-app-samba4
 
           VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
-          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
       - name: Clean Previous Build
@@ -100,9 +100,11 @@ jobs:
 
       - name: Generate Variables
         run: |
-          cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           cd "$OPENWRT_PATH" || exit 1
           export TERM=dumb
+          # 确保使用独立的 .config 文件
+          rm -f .config
+          cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig > /dev/null 2>&1
           SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
@@ -129,6 +131,8 @@ jobs:
         run: |
           cd "$OPENWRT_PATH" || exit 1
           export TERM=dumb  # 显式覆盖
+          # 确保使用独立的 .config 文件
+          rm -f .config
           cp -f "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig
 
@@ -203,7 +207,7 @@ jobs:
 
       - name: Upload Firmware To Release
         if: steps.compile.outputs.status == 'success' && env.FIRMWARE_RELEASE == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v1  # 恢复到 v1 版本，并显式指定 draft: false
         with:
             name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
             tag_name: ${{ env.FIRMWARE_TAG }}-${{ env.FILE_DATE }}
@@ -223,5 +227,5 @@ jobs:
               - ${{ env.VERSION_INFO }}
             token: ${{ secrets.GITHUB_TOKEN }}
             replace: false  # 不允许覆盖已有Release
-            draft: false    # 直接发布，非草稿
+            draft: false    # 直接发布，非草稿 (关键修改)
             prerelease: false # 非预发布版本
