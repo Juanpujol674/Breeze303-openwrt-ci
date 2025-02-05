@@ -3,7 +3,7 @@ name: ipq60xx-6.12-M2_Nowifi
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 17 * * *"  # UTC时间23:00
+    - cron: "0 23 * * *"  # UTC时间23:00
 
 env:
   TERM: dumb  # 关键修复
@@ -23,8 +23,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       TERM: dumb  # 覆盖全局确保生效
-      OPENWRT_PATH: ${{ github.workspace }}/openwrt  # 显式定义 OpenWrt 路径
-
+      
     steps:
       - name: Check Server Performance
         run: |
@@ -48,12 +47,12 @@ jobs:
           sudo rm -rf /usr/share/dotnet /etc/apt/sources.list.d /usr/local/lib/android $AGENT_TOOLSDIRECTORY || true
           sudo -E apt-get -y purge azure-cli ghc* zulu* llvm* firefox google* dotnet* powershell openjdk* mongodb* moby* || true
           sudo -E apt-get -y update
-          sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204) || exit 1
-          sudo -E apt-get -y install libev-dev \
-                                   libpam0g-dev \
-                                   liblzma-dev \
-                                   libsnmp-dev || exit 1
-          sudo -E apt-get -y install libncurses-dev ncurses-term || exit 1
+          sudo -E apt-get -y install $(curl -fsSL is.gd/depends_ubuntu_2204)
+          libev-dev \         # 新增
+          libpam0g-dev \      # 新增
+          liblzma-dev \       # 新增
+          libsnmp-dev         # 新增
+          sudo -E apt-get -y install libncurses-dev ncurses-term
           sudo -E systemctl daemon-reload
           sudo -E apt-get -y autoremove --purge
           sudo -E apt-get -y clean
@@ -81,7 +80,7 @@ jobs:
             exit 1
           fi
 
-          cd "$OPENWRT_PATH" || (echo "::error::进入目录失败" && exit 1)
+          cd "openwrt" || (echo "::error::进入目录失败" && exit 1)
           
           # 删除可能引入额外插件的第三方包
           rm -rf feeds/small8/luci-app-dockerman
@@ -89,6 +88,7 @@ jobs:
           rm -rf feeds/luci/applications/luci-app-samba4
 
           VERSION_KERNEL=$(grep -oP 'LINUX_KERNEL_HASH-\K[0-9]+\.[0-9]+\.[0-9]+' include/kernel-6.12)
+          echo "OPENWRT_PATH=$PWD" >> $GITHUB_ENV
           echo "VERSION_KERNEL=$VERSION_KERNEL" >> $GITHUB_ENV
 
       - name: Clean Previous Build
@@ -100,11 +100,9 @@ jobs:
 
       - name: Generate Variables
         run: |
+          cp "$CONFIG_FILE" "$OPENWRT_PATH/.config"
           cd "$OPENWRT_PATH" || exit 1
           export TERM=dumb
-          # 确保使用独立的 .config 文件
-          rm -f .config
-          cp "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig > /dev/null 2>&1
           SOURCE_REPO="$(echo "$REPO_URL" | awk -F '/' '{print $(NF)}')"
           echo "SOURCE_REPO=$SOURCE_REPO" >> $GITHUB_ENV
@@ -127,18 +125,10 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Install Missing Dependencies
-        run: |
-          cd "$OPENWRT_PATH" || exit 1
-          ./scripts/feeds update -a
-          ./scripts/feeds install -f libev lm-sensors wsdd2 libpam liblzma libnetsnmp kmod-qca-nss-drv kmod-qca-nss-drv-wifi-meshmgr luci luci-i18n-base-zh-cn luci-app-samba4 || exit 1
-
       - name: Load Custom Configuration
         run: |
           cd "$OPENWRT_PATH" || exit 1
           export TERM=dumb  # 显式覆盖
-          # 确保使用独立的 .config 文件
-          rm -f .config
           cp -f "$GITHUB_WORKSPACE/$CONFIG_FILE" .config
           make defconfig
 
@@ -177,7 +167,7 @@ jobs:
         run: |
           cd $OPENWRT_PATH
           echo -e "$(nproc) thread compile"
-          make -j$(nproc) V=s || make -j1 || make -j1 V=s
+          make -j$(nproc) || make -j1 || make -j1 V=s
           if [ $? -ne 0 ]; then
             echo "编译失败，请检查日志！"
             exit 1
